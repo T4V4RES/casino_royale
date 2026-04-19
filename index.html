@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Casino Royale 3D | ICG Project 2025/2026</title>
+
+  <!-- External Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+  <!-- Canvas container -->
+  <div id="c"></div>
+  <div id="xhair"></div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="money">💰 $<span id="mv">1000</span></div>
+    <div id="hint"></div>
+  </div>
+
+  <!-- Exit button -->
+  <button id="exitbtn" onclick="exitTable()">◄ LEAVE TABLE</button>
+
+  <!-- Message notifications -->
+  <div id="msgs"></div>
+
+  <!-- Main menu overlay -->
+  <div id="overlay">
+    <h1>CASINO ROYALE</h1>
+    <div class="sub">3D EXPERIENCE · ICG 2025/2026</div>
+    <div class="instructions">
+      <strong>MOVE</strong> — W A S D &nbsp;|&nbsp; <strong>LOOK</strong> — Mouse<br>
+      <strong>INTERACT</strong> — E (when near a table)<br>
+      <strong>LEAVE TABLE</strong> — ESC or the button<br><br>
+      Starting chips: <strong>$1,000</strong><br>
+      Blackjack · Roulette · Texas Hold'em
+    </div>
+    <button id="playbtn" onclick="startGame()">ENTER CASINO</button>
+  </div>
+
+  <!-- Resume overlay (after accidental mouse release) -->
+  <div id="resume">
+    <button id="resumebtn" onclick="resumeGame()">CLICK TO RESUME</button>
+  </div>
+
+  <!-- Game panel (shown when at a table) -->
+  <div id="panel">
+    <div id="ptitle">—</div>
+    <div id="pinner">
+      <div id="pstatus"></div>
+      <div id="pactions"></div>
+    </div>
+  </div>
+
+  <!-- Scripts - Load in correct order -->
+  <!-- Utilities -->
+  <script src="js/utils/cards.js"></script>
+  <script src="js/utils/controls.js"></script>
+
+  <!-- Scene construction -->
+  <script src="js/scene/textures.js"></script>
+  <script src="js/scene/lights.js"></script>
+  <script src="js/scene/casino.js"></script>
+  <script src="js/scene/tables.js"></script>
+
+  <!-- Game logic -->
+  <script src="js/games/blackjack.js"></script>
+  <script src="js/games/roulette.js"></script>
+  <script src="js/games/poker.js"></script>
+
+  <!-- Main game manager -->
+  <script src="js/game.js"></script>
+
+</body>
+
+</html>
