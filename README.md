@@ -94,9 +94,9 @@ casino_royale/
 
 ---
 
-## 6. Utilização
+## 4. Utilização
 
-### 6.1 Controlos
+### 4.1 Controlos
 
 | Acção | Tecla |
 |---|---|
@@ -108,7 +108,7 @@ casino_royale/
 | Interagir com mesa próxima | `E` |
 | Sair da mesa / regressar à exploração | `Esc` |
 
-### 6.2 Fluxo de interacção
+### 4.2 Fluxo de interacção
 
 1. Entrar no casino pelo menu inicial.
 2. Explorar o espaço em primeira pessoa.
@@ -118,7 +118,7 @@ casino_royale/
 
 ---
 
-## 8. Arquitectura de software
+## 5. Arquitectura de software
 
 O sistema segue um estilo modular de responsabilidade única:
 
@@ -141,14 +141,14 @@ MENU → EXPLORING → AT_TABLE
 
 ---
 
-## 9. Desempenho e depuração
+## 6. Desempenho e depuração
 
-### 9.1 Medidas já aplicadas
+### 6.1 Medidas já aplicadas
 - Limitação de `pixelRatio` para evitar sobrecarga em ecrãs de alta densidade.
 - Organização hierárquica da cena para actualizar apenas o necessário.
 - Escolha equilibrada de resolução de sombras para qualidade/desempenho.
 
-### 9.2 Procedimentos de depuração
+### 6.2 Procedimentos de depuração
 - Inspecção de consola (`DevTools`) para estados de jogo e objectos da cena.
 - Verificação de `dt` e estabilidade de animação.
 - Testes de redimensionamento da janela e actualização da matriz de projecção.
