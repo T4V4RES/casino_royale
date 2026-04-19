@@ -13,13 +13,10 @@
 - [1. Enquadramento e objectivos](#1-enquadramento-e-objectivos)
 - [2. Funcionalidades implementadas](#2-funcionalidades-implementadas)
 - [3. Estrutura do projecto](#3-estrutura-do-projecto)
-- [4. Mapeamento dos conteúdos leccionados](#4-mapeamento-dos-conteúdos-leccionados)
-- [5. Fundamentos técnicos por unidade ICG](#5-fundamentos-técnicos-por-unidade-icg)
-- [6. Utilização](#6-utilização)
-- [7. Execução local](#7-execução-local)
-- [8. Arquitectura de software](#8-arquitectura-de-software)
-- [9. Desempenho e depuração](#9-desempenho-e-depuração)
-- [10. Trabalho futuro](#10-trabalho-futuro)
+- [4. Utilização](#6-utilização)
+- [5. Arquitectura de software](#8-arquitectura-de-software)
+- [6. Desempenho e depuração](#9-desempenho-e-depuração)
+
 
 ---
 
