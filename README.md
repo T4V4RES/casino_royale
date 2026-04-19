@@ -91,90 +91,6 @@ casino_royale/
 
 **Princípio de organização:** separação entre construção de cena, lógica de jogos, utilitários e ciclo principal.
 
----
-
-## 4. Mapeamento dos conteúdos leccionados
-
-| Unidade | Tema | Aplicação no projecto |
-|---|---|---|
-| ICG_02 | Introdução ao Three.js | Inicialização `Scene`/`Camera`/`Renderer`, malhas e materiais |
-| ICG_03 | Transformações 2D/3D | `position`, `rotation`, `scale`, hierarquias e composição de transformações |
-| ICG_04 | Visualização 3D | `PerspectiveCamera`, *frustum*, *clipping*, controlo de câmara |
-| ICG_05 | Iluminação e sombreamento | Modelo de Phong, luz ambiente/pontual/focal, sombras |
-| ICG_06 | Modelação geométrica por malhas | Primitivas, composição em *scene graph*, texturas procedurais |
-
----
-
-## 5. Fundamentos técnicos por unidade ICG
-
-### 5.1 ICG_02 — *Pipeline* gráfica com Three.js
-
-A arquitectura base assenta em três objectos essenciais:
-
-```javascript
-scene = new THREE.Scene();
-camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 80);
-renderer = new THREE.WebGLRenderer({ antialias: true });
-```
-
-Em termos conceptuais:
-1. a **cena** contém geometria, materiais e luzes;
-2. a **câmara** define o ponto de observação e o volume visível;
-3. o **renderer** converte o estado da cena em imagem rasterizada.
-
-### 5.2 ICG_03 — Transformações e animação temporal
-
-A manipulação espacial de objectos é realizada por composição de transformações. A ordem é relevante (não comutativa), pelo que *translate*, *rotate* e *scale* devem ser aplicadas com intencionalidade geométrica.
-
-A animação é independente da taxa de fotogramas:
-
-```javascript
-const dt = clock.getDelta();
-mesh.rotation.y += omega * dt;
-```
-
-Deste modo, a cinemática mantém-se estável em máquinas com desempenho distinto.
-
-### 5.3 ICG_04 — Visualização e projecção
-
-A visualização usa projecção em perspectiva:
-
-```javascript
-camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-```
-
-A escolha de `near` e `far` é crítica para evitar perda de precisão em profundidade e para reduzir trabalho de rasterização fora do volume útil.
-
-A navegação em primeira pessoa operacionaliza conceitos de espaço da câmara, vector direccional e actualização contínua da pose do observador.
-
-### 5.4 ICG_05 — Iluminação, sombreamento e sombras
-
-O projecto adopta uma abordagem híbrida de iluminação:
-- **luz ambiente** para base luminosa global;
-- **luzes pontuais** para fontes locais;
-- **luzes focais** para enfatizar as mesas.
-
-As sombras são activadas no renderizador e nos elementos emissores/receptores:
-
-```javascript
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-light.castShadow = true;
-mesh.receiveShadow = true;
-```
-
-O material predominante (`MeshPhongMaterial`) permite controlar resposta difusa e especular, adequando-se bem ao contexto visual do casino.
-
-### 5.5 ICG_06 — Modelação geométrica e *scene graph*
-
-A modelação foi realizada por composição de primitivas (`BoxGeometry`, `CylinderGeometry`, `PlaneGeometry`, `TorusGeometry`, `SphereGeometry`).
-
-Cada mesa é construída como grupo hierárquico (`THREE.Group`), promovendo:
-- reutilização de componentes;
-- transformações locais consistentes;
-- manutenção mais simples.
-
-Adicionalmente, texturas procedurais em `Canvas 2D` são convertidas para `THREE.CanvasTexture`, evitando dependência excessiva de activos externos.
 
 ---
 
@@ -199,31 +115,6 @@ Adicionalmente, texturas procedurais em `Canvas 2D` são convertidas para `THREE
 3. Aproximar-se de uma mesa e premir `E`.
 4. Executar acções do jogo no painel respectivo.
 5. Sair com `Esc` e regressar ao modo de exploração.
-
----
-
-## 7. Execução local
-
-### Opção A — Python
-
-```bash
-cd casino_royale
-python -m http.server 8000
-```
-
-Abrir: `http://localhost:8000`
-
-### Opção B — Node.js (`http-server`)
-
-```bash
-npm install -g http-server
-cd casino_royale
-http-server
-```
-
-### Opção C — VS Code Live Server
-
-Abrir `index.html` com a extensão **Live Server**.
 
 ---
 
@@ -262,18 +153,4 @@ MENU → EXPLORING → AT_TABLE
 - Verificação de `dt` e estabilidade de animação.
 - Testes de redimensionamento da janela e actualização da matriz de projecção.
 
----
 
-## 10. Trabalho futuro
-
-- Integração de áudio espacial e ambiente sonoro reactivo.
-- Estatísticas persistentes de sessão.
-- Suporte para WebXR (realidade virtual).
-- Introdução de novos jogos e perfis de dificuldade.
-- Instrumentação de métricas de desempenho em tempo real.
-
----
-
-## Nota final
-
-Este projecto evidencia a aplicação integrada de conteúdos teóricos de ICG num artefacto interactivo completo, conciliando rigor técnico, organização de software e experiência de utilização em tempo real no navegador.
