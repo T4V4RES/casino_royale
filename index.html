@@ -1,84 +1,212 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="pt">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Casino Royale 3D | ICG Project 2025/2026</title>
-
-  <!-- External Libraries -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
-
-  <!-- Stylesheet -->
-  <link rel="stylesheet" href="css/style.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Casino 3D – First Person</title>
+    <link rel="stylesheet" href="/src/styles.css" />
 </head>
-
 <body>
+    <!-- Three.js canvas container -->
+    <div id="canvas-wrap"></div>
 
-  <!-- Canvas container -->
-  <div id="c"></div>
-  <div id="xhair"></div>
-
-  <!-- HUD -->
-  <div id="hud">
-    <div id="money">💰 $<span id="mv">1000</span></div>
-    <div id="hint"></div>
-  </div>
-
-  <!-- Exit button -->
-  <button id="exitbtn" onclick="exitTable()">◄ LEAVE TABLE</button>
-
-  <!-- Message notifications -->
-  <div id="msgs"></div>
-
-  <!-- Main menu overlay -->
-  <div id="overlay">
-    <h1>CASINO ROYALE</h1>
-    <div class="sub">3D EXPERIENCE · ICG 2025/2026</div>
-    <div class="instructions">
-      <strong>MOVE</strong> — W A S D &nbsp;|&nbsp; <strong>LOOK</strong> — Mouse<br>
-      <strong>INTERACT</strong> — E (when near a table)<br>
-      <strong>LEAVE TABLE</strong> — ESC or the button<br><br>
-      Starting chips: <strong>$1,000</strong><br>
-      Blackjack · Roulette · Texas Hold'em
+    <!-- ==================== SPLASH SCREEN ==================== -->
+    <div id="splash-screen">
+        <h1 class="menu-title">Casino 3D</h1>
+        <p class="menu-subtitle">Blackjack, Texas Hold'em Poker &amp; Roleta</p>
+        <p class="splash-instruction">Clica para entrar no casino</p>
+        <div class="splash-controls">
+            <div class="ctrl-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> — Mover</div>
+            <div class="ctrl-row"><kbd>Shift</kbd> — Correr</div>
+            <div class="ctrl-row"><kbd>E</kbd> — Interagir</div>
+            <div class="ctrl-row"><kbd>ESC</kbd> — Sair da mesa</div>
+        </div>
     </div>
-    <button id="playbtn" onclick="startGame()">ENTER CASINO</button>
-  </div>
 
-  <!-- Resume overlay (after accidental mouse release) -->
-  <div id="resume">
-    <button id="resumebtn" onclick="resumeGame()">CLICK TO RESUME</button>
-  </div>
-
-  <!-- Game panel (shown when at a table) -->
-  <div id="panel">
-    <div id="ptitle">—</div>
-    <div id="pinner">
-      <div id="pstatus"></div>
-      <div id="pactions"></div>
+    <!-- ==================== FPS HUD (exploring) ==================== -->
+    <div id="fps-hud" style="display:none;">
+        <div id="fps-chips-display">Fichas: <span id="fps-chips">$1000</span></div>
     </div>
-  </div>
 
-  <!-- Scripts - Load in correct order -->
-  <!-- Utilities -->
-  <script src="js/utils/cards.js"></script>
-  <script src="js/utils/controls.js"></script>
+    <!-- ==================== CROSSHAIR ==================== -->
+    <div id="crosshair">+</div>
 
-  <!-- Scene construction -->
-  <script src="js/scene/textures.js"></script>
-  <script src="js/scene/lights.js"></script>
-  <script src="js/scene/casino.js"></script>
-  <script src="js/scene/tables.js"></script>
+    <!-- ==================== INTERACTION PROMPT ==================== -->
+    <div id="interaction-prompt" style="display:none;"></div>
 
-  <!-- Game logic -->
-  <script src="js/games/blackjack.js"></script>
-  <script src="js/games/roulette.js"></script>
-  <script src="js/games/poker.js"></script>
+    <!-- ==================== POINTER LOCK HINT ==================== -->
+    <div id="lock-hint" style="display:none;">
+        <p class="lock-hint-text">Clica para olhar à volta</p>
+        <p class="lock-hint-sub">Podes andar com <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></p>
+    </div>
 
-  <!-- Main game manager -->
-  <script src="js/game.js"></script>
+    <!-- ==================== ATM MODAL ==================== -->
+    <div id="atm-modal" style="display:none;">
+        <div class="atm-content">
+            <h2 class="atm-title">🏧 Multibanco</h2>
+            <div class="atm-balance-row">Saldo: <span id="atm-balance">$1000</span></div>
+            <div class="atm-buttons">
+                <button class="atm-withdraw-btn" data-amount="100">+$100</button>
+                <button class="atm-withdraw-btn" data-amount="500">+$500</button>
+                <button class="atm-withdraw-btn" data-amount="1000">+$1000</button>
+                <button class="atm-withdraw-btn" data-amount="2000">+$2000</button>
+            </div>
+            <button class="atm-close-btn" id="atm-close">Fechar</button>
+        </div>
+    </div>
 
+    <!-- ==================== BAR MODAL ==================== -->
+    <div id="bar-modal" style="display:none;">
+        <div class="bar-content">
+            <h2 class="bar-title">🍺 Bar do Casino</h2>
+            <div class="bar-row">Finos bebidos: <span id="bar-drinks-count">0</span></div>
+            <div class="bar-row">Estado: <span id="bar-status">Sóbrio</span></div>
+            <div class="bar-row bar-help">Pede o fino e bebe com <kbd>F</kbd> em primeira pessoa.</div>
+            <div class="bar-buttons">
+                <button id="bar-drink-fino" class="bar-drink-btn">Pedir fino</button>
+                <button id="bar-close" class="bar-close-btn">Sair do Bar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="blackout-overlay" style="display:none;">
+        <div id="blackout-message">Coma alcoólico…</div>
+    </div>
+
+    <!-- ==================== BLACKJACK HUD ==================== -->
+    <div id="bj-hud" class="hud">
+        <button class="btn-back-menu">← Sair da Mesa</button>
+
+        <!-- Info panel -->
+        <div class="bj-info">
+            <div class="bj-info-row">
+                <div>Jogador: <span id="bj-player-value">-</span></div>
+                <div>Dealer: <span id="bj-dealer-value">-</span></div>
+            </div>
+            <div class="bj-hand-display">
+                <div class="hand-cards"><span class="hand-label">Tuas cartas:</span> <span id="bj-player-cards">-</span></div>
+                <div class="hand-cards"><span class="hand-label">Dealer:</span> <span id="bj-dealer-cards">-</span></div>
+            </div>
+        </div>
+
+        <!-- Bottom bar -->
+        <div class="bj-bottom-bar">
+            <!-- Betting phase -->
+            <div id="bj-betting" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:center;">
+                <button class="chip-btn chip-1"   data-value="1">$1</button>
+                <button class="chip-btn chip-5"   data-value="5">$5</button>
+                <button class="chip-btn chip-10"  data-value="10">$10</button>
+                <button class="chip-btn chip-25"  data-value="25">$25</button>
+                <button class="chip-btn chip-50"  data-value="50">$50</button>
+                <button class="chip-btn chip-100" data-value="100">$100</button>
+                <div class="bet-display">Aposta: <span id="bj-bet-amount">$0</span></div>
+                <div class="bet-display">Fichas: <span id="bj-player-chips">$1000</span></div>
+                <button class="action-btn btn-clear" id="bj-clear-bet">Limpar</button>
+                <button class="action-btn btn-deal" id="bj-deal">Distribuir</button>
+            </div>
+
+            <!-- Playing phase -->
+            <div id="bj-actions" style="display:none; gap:12px;">
+                <button class="action-btn btn-hit" id="bj-hit">Hit</button>
+                <button class="action-btn btn-stand" id="bj-stand">Stand</button>
+                <button class="action-btn btn-double" id="bj-double">Double</button>
+            </div>
+
+            <!-- New round -->
+            <div id="bj-new-round" style="display:none; gap:12px;">
+                <button class="action-btn btn-new" id="bj-new-round-btn">Nova Ronda</button>
+            </div>
+        </div>
+
+        <!-- Result message -->
+        <div id="bj-message" class="game-message" style="display:none;"></div>
+    </div>
+
+    <!-- ==================== POKER HUD ==================== -->
+    <div id="pk-hud" class="hud">
+        <button class="btn-back-menu">← Sair da Mesa</button>
+
+        <!-- Top info bar -->
+        <div class="pk-top-bar">
+            <div class="pk-phase" id="pk-phase">Pre-Flop</div>
+            <div id="pk-pot">Pote: $0</div>
+        </div>
+
+        <!-- Hand info panel -->
+        <div class="pk-hand-info">
+            <div class="hand-cards"><span class="hand-label">Tuas cartas:</span> <span id="pk-player-cards">-</span></div>
+            <div class="hand-cards"><span class="hand-label">Mesa:</span> <span id="pk-community-cards">-</span></div>
+            <div class="hand-cards"><span class="hand-label">Mão:</span> <span id="pk-hand-name" class="hand-name">-</span></div>
+        </div>
+
+        <!-- Bot action popup -->
+        <div id="pk-bot-action"></div>
+
+        <!-- Bottom actions -->
+        <div class="pk-bottom-bar">
+            <div id="pk-actions" style="display:none; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap;">
+                <button class="pk-action-btn btn-fold"  id="pk-fold">Fold</button>
+                <button class="pk-action-btn btn-check" id="pk-check">Check</button>
+                <button class="pk-action-btn btn-call"  id="pk-call">Call</button>
+                <div class="raise-group">
+                    <button class="pk-action-btn btn-raise" id="pk-raise">Raise</button>
+                    <div class="raise-slider-wrap">
+                        <input type="range" id="pk-raise-slider" min="1" max="10" value="2" step="1" class="raise-slider" />
+                        <span id="pk-raise-amount" class="raise-label">2x BB</span>
+                    </div>
+                </div>
+                <button class="pk-action-btn btn-allin" id="pk-allin">All-In</button>
+            </div>
+
+            <div id="pk-start-round" style="display:flex; gap:12px;">
+                <button class="action-btn btn-new" id="pk-start-round-btn">Nova Ronda</button>
+            </div>
+        </div>
+
+        <!-- Result message -->
+        <div id="pk-message" class="game-message" style="display:none;"></div>
+    </div>
+
+    <!-- ==================== ROULETTE HUD ==================== -->
+    <div id="rt-hud" class="hud">
+        <button class="btn-back-menu">← Sair da Mesa</button>
+
+        <div class="rt-top-bar">
+            <div>Fichas: <span id="rt-player-chips">$1000</span></div>
+            <div>Aposta atual: <span id="rt-current-bet">—</span></div>
+            <div>Último resultado: <span id="rt-last-result">—</span></div>
+        </div>
+
+        <div class="rt-panel">
+            <div class="rt-amount-row">
+                <label for="rt-bet-amount">Valor da aposta:</label>
+                <select id="rt-bet-amount" class="rt-select">
+                    <option value="10">$10</option>
+                    <option value="25">$25</option>
+                    <option value="50" selected>$50</option>
+                    <option value="100">$100</option>
+                    <option value="250">$250</option>
+                </select>
+            </div>
+
+            <div class="rt-color-bets">
+                <button class="rt-color-btn rt-red" data-color="red">Vermelho (1:1)</button>
+                <button class="rt-color-btn rt-black" data-color="black">Preto (1:1)</button>
+                <button class="rt-color-btn rt-green" data-color="green">Verde / 0 (35:1)</button>
+            </div>
+
+            <div class="rt-number-title">Números (35:1)</div>
+            <div id="rt-number-grid" class="rt-number-grid"></div>
+
+            <div class="rt-actions">
+                <button id="rt-clear-bet" class="action-btn btn-clear">Limpar Aposta</button>
+                <button id="rt-spin" class="action-btn btn-deal">Girar Roleta</button>
+            </div>
+        </div>
+
+        <div id="rt-message" class="game-message" style="display:none;"></div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
 </body>
-
 </html>

@@ -1,0 +1,784 @@
+/* ==================================================================
+   Casino Game – Styles (FPS Mode)
+   ================================================================== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { overflow: hidden; background: #0a0a0a; font-family: 'Segoe UI', Arial, sans-serif; color: #fff; }
+
+#canvas-wrap { position: fixed; inset: 0; z-index: 0; }
+
+/* ----- SPLASH SCREEN ----- */
+#splash-screen {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at center, rgba(10,30,10,0.92) 0%, rgba(0,0,0,0.97) 100%);
+    cursor: pointer;
+    user-select: none;
+}
+
+.menu-title {
+    font-size: 4rem; font-weight: 900; letter-spacing: 5px;
+    text-transform: uppercase; margin-bottom: 10px;
+    background: linear-gradient(135deg,#FFD700,#FFA000,#FFD700);
+    background-clip: text;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 40px rgba(255,215,0,0.3);
+    filter: drop-shadow(0 2px 8px rgba(255,200,0,0.4));
+}
+
+.menu-subtitle {
+    font-size: 1.1rem; color: #aaa; margin-bottom: 20px; letter-spacing: 2px;
+}
+
+.splash-instruction {
+    font-size: 1.3rem; color: #FFD700; margin-bottom: 30px;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.splash-controls {
+    background: rgba(0,0,0,0.5); border: 1px solid rgba(255,215,0,0.2);
+    border-radius: 12px; padding: 16px 28px;
+}
+.ctrl-row {
+    font-size: 0.95rem; color: #ccc; margin: 6px 0;
+}
+.ctrl-row kbd {
+    display: inline-block; background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.25); border-radius: 4px;
+    padding: 2px 8px; font-family: monospace; font-size: 0.85rem;
+    margin: 0 2px; color: #FFD700;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ----- CROSSHAIR ----- */
+#crosshair {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 40;
+    font-size: 24px; color: rgba(255,255,255,0.5);
+    pointer-events: none; user-select: none;
+    text-shadow: 0 0 4px rgba(0,0,0,0.8);
+    display: none;
+}
+
+/* ----- INTERACTION PROMPT ----- */
+#interaction-prompt {
+    position: fixed; bottom: 120px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 45;
+    background: rgba(0,0,0,0.75); border: 1px solid rgba(255,215,0,0.4);
+    color: #FFD700; font-size: 1.1rem; font-weight: 600;
+    padding: 12px 28px; border-radius: 10px;
+    letter-spacing: 1px;
+    animation: promptFade 0.3s ease;
+    pointer-events: none;
+}
+
+@keyframes promptFade {
+    0% { opacity: 0; transform: translateX(-50%) translateY(8px); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ----- POINTER LOCK HINT ----- */
+#lock-hint {
+    position: fixed; inset: 0; z-index: 55;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.45);
+    cursor: pointer; user-select: none;
+    pointer-events: auto;
+}
+.lock-hint-text {
+    font-size: 1.5rem; color: #FFD700; font-weight: 700;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+.lock-hint-sub {
+    margin-top: 8px; font-size: 0.95rem; color: #ccc;
+}
+.lock-hint-sub kbd {
+    display: inline-block; background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.25); border-radius: 4px;
+    padding: 2px 6px; font-family: monospace; font-size: 0.85rem;
+    margin: 0 2px; color: #FFD700;
+}
+
+/* ----- FPS HUD (chips display) ----- */
+#fps-hud {
+    position: fixed; z-index: 50; pointer-events: none;
+}
+#fps-chips-display {
+    position: fixed; top: 16px; right: 16px;
+    background: rgba(0,0,0,0.65); border: 1px solid rgba(255,215,0,0.35);
+    color: #FFD700; font-size: 1.15rem; font-weight: 700;
+    padding: 10px 20px; border-radius: 10px;
+    letter-spacing: 1px;
+}
+
+/* ----- ATM MODAL ----- */
+#atm-modal {
+    position: fixed; inset: 0; z-index: 90;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.7);
+}
+.atm-content {
+    background: linear-gradient(180deg, #1A2744 0%, #0D1B2A 100%);
+    border: 2px solid #0066BB; border-radius: 16px;
+    padding: 32px 40px; min-width: 300px; text-align: center;
+    box-shadow: 0 0 40px rgba(0,100,200,0.3);
+}
+.atm-title {
+    font-size: 1.6rem; color: #88CCFF; margin-bottom: 16px;
+}
+.atm-balance-row {
+    font-size: 1.4rem; color: #FFD700; font-weight: 700; margin-bottom: 20px;
+}
+.atm-buttons {
+    display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px;
+}
+.atm-withdraw-btn {
+    padding: 12px 22px; font-size: 1rem; font-weight: 700;
+    border: 2px solid #00CC66; border-radius: 10px;
+    background: rgba(0,200,100,0.12); color: #00CC66;
+    cursor: pointer; transition: all 0.2s;
+}
+.atm-withdraw-btn:hover {
+    background: rgba(0,200,100,0.3); transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,200,100,0.3);
+}
+.atm-withdraw-btn.atm-btn-flash {
+    background: rgba(0,200,100,0.5); transform: scale(1.05);
+}
+.atm-close-btn {
+    padding: 10px 32px; font-size: 1rem; font-weight: 600;
+    border: 1px solid #666; border-radius: 8px;
+    background: rgba(255,255,255,0.08); color: #ccc;
+    cursor: pointer; transition: all 0.2s;
+}
+.atm-close-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
+
+/* ----- BAR MODAL ----- */
+#bar-modal {
+    position: fixed; inset: 0; z-index: 92;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent;
+    pointer-events: none;
+}
+
+.bar-content {
+    background: linear-gradient(180deg, #4E342E 0%, #2D1B16 100%);
+    border: 2px solid #C58B39;
+    border-radius: 16px;
+    padding: 28px 34px;
+    min-width: 320px;
+    box-shadow: 0 0 38px rgba(197,139,57,0.28);
+    pointer-events: auto;
+}
+
+.bar-title {
+    font-size: 1.5rem;
+    color: #FFD180;
+    margin-bottom: 12px;
+}
+
+.bar-row {
+    font-size: 1.05rem;
+    color: #FFE0B2;
+    margin: 6px 0;
+}
+
+.bar-row span {
+    font-weight: 700;
+    color: #FFD700;
+}
+
+.bar-help {
+    color: #FFD180;
+    font-size: 0.95rem;
+}
+
+.bar-help kbd,
+#bar-fp-hint kbd {
+    display: inline-block;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.26);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: monospace;
+    color: #FFD700;
+}
+
+.bar-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.bar-drink-btn,
+.bar-close-btn {
+    border: none;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .15s ease, filter .15s ease;
+}
+
+.bar-drink-btn {
+    background: linear-gradient(135deg, #F9A825, #F57F17);
+    color: #2A1A00;
+}
+
+.bar-close-btn {
+    background: rgba(255,255,255,0.12);
+    color: #ddd;
+    border: 1px solid rgba(255,255,255,0.28);
+}
+
+.bar-drink-btn:hover,
+.bar-close-btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+}
+
+.bar-btn-flash {
+    box-shadow: 0 0 16px rgba(255,193,7,0.55);
+    transform: scale(1.03);
+}
+
+#blackout-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    background: #000;
+    opacity: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity .9s ease;
+    pointer-events: none;
+}
+
+#blackout-overlay.show {
+    opacity: 1;
+}
+
+#blackout-message {
+    color: #fff;
+    font-size: 2rem;
+    font-weight: 900;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-align: center;
+    text-shadow: 0 0 14px rgba(255,255,255,0.25);
+}
+
+/* ----- HUD common ----- */
+.hud {
+    position: fixed; z-index: 50; pointer-events: none;
+}
+.hud > * { pointer-events: auto; }
+
+.btn-back-menu {
+    position: fixed; top: 16px; left: 16px; z-index: 60;
+    background: rgba(0,0,0,0.65); border: 1px solid #666; color: #ccc;
+    padding: 8px 18px; border-radius: 8px; cursor: pointer; font-size: 0.9rem;
+    transition: all 0.2s;
+}
+.btn-back-menu:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+/* ----- BLACKJACK HUD ----- */
+#bj-hud {
+    display: none;
+    bottom: 0; left: 0; right: 0;
+}
+
+.bj-bottom-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(0deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.4) 100%);
+    padding: 16px 24px; display: flex; align-items: center; justify-content: center; gap: 18px;
+    flex-wrap: wrap;
+}
+
+.bj-info {
+    position: fixed; top: 16px; right: 16px; z-index: 55;
+    background: rgba(0,0,0,0.78); border-radius: 12px; padding: 12px 20px;
+    border: 1px solid rgba(255,215,0,0.3);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+}
+.bj-info-row { display: flex; gap: 24px; font-size: 1.05rem; }
+.bj-info-row span { color: #FFD700; font-weight: 600; }
+
+.bj-hand-display {
+    margin-top: 10px; border-top: 1px solid rgba(255,215,0,0.2); padding-top: 8px;
+}
+
+.hand-cards {
+    font-size: 0.95rem; margin: 3px 0; display: flex; gap: 6px; align-items: center;
+}
+.hand-label { color: #aaa; font-size: 0.85rem; min-width: 90px; }
+.hand-cards span:last-child { font-weight: 600; letter-spacing: 1px; }
+.card-red { color: #ef5350; }
+.card-black { color: #e0e0e0; }
+.hand-name { color: #FFD700 !important; font-weight: 700 !important; font-size: 1rem !important; }
+
+/* Chip buttons */
+.chip-btn {
+    width: 56px; height: 56px; border-radius: 50%;
+    border: 3px solid #FFD700; cursor: pointer;
+    font-weight: 800; font-size: 0.85rem; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+.chip-btn:hover { transform: scale(1.15); box-shadow: 0 0 16px rgba(255,215,0,0.5); }
+.chip-1   { background: radial-gradient(circle, #eee, #bbb); color: #333; }
+.chip-5   { background: radial-gradient(circle, #f44, #c00); }
+.chip-10  { background: radial-gradient(circle, #42a5f5, #1565c0); }
+.chip-25  { background: radial-gradient(circle, #66bb6a, #2e7d32); }
+.chip-50  { background: radial-gradient(circle, #ffa726, #e65100); }
+.chip-100 { background: radial-gradient(circle, #444, #111); }
+
+/* Action buttons */
+.action-btn {
+    padding: 12px 28px; font-size: 1rem; font-weight: 700;
+    border: none; border-radius: 10px; cursor: pointer;
+    text-transform: uppercase; letter-spacing: 1px;
+    transition: all 0.15s;
+}
+.action-btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
+.btn-deal  { background: linear-gradient(135deg, #4CAF50, #2E7D32); color: #fff; }
+.btn-hit   { background: linear-gradient(135deg, #2196F3, #1565C0); color: #fff; }
+.btn-stand { background: linear-gradient(135deg, #FF9800, #E65100); color: #fff; }
+.btn-double{ background: linear-gradient(135deg, #9C27B0, #6A1B9A); color: #fff; }
+.btn-clear { background: rgba(255,255,255,0.12); color: #ccc; border: 1px solid #555; }
+.btn-new   { background: linear-gradient(135deg, #FFD700, #FFA000); color: #1a1a1a; }
+
+.bet-display {
+    font-size: 1.3rem; font-weight: 700; color: #FFD700;
+    min-width: 80px; text-align: center;
+}
+
+/* ----- Game Messages ----- */
+.game-message {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 70;
+    font-size: 2.2rem; font-weight: 900; text-transform: uppercase;
+    padding: 20px 50px; border-radius: 16px;
+    letter-spacing: 3px;
+    animation: msgPop 0.4s ease-out;
+}
+.msg-win  { background: rgba(76,175,80,0.9); color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+.msg-lose { background: rgba(229,57,53,0.9); color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+.msg-push { background: rgba(255,152,0,0.9); color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+
+@keyframes msgPop {
+    0%   { transform: translate(-50%,-50%) scale(0.5); opacity: 0; }
+    100% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+}
+
+/* ----- POKER HUD ----- */
+#pk-hud { display: none; }
+
+.pk-top-bar {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+    z-index: 55;
+    background: rgba(0,0,0,0.75); border-radius: 12px; padding: 10px 28px;
+    border: 1px solid rgba(255,215,0,0.3);
+    display: flex; gap: 28px; align-items: center;
+    font-size: 1.1rem;
+}
+.pk-top-bar .pk-phase {
+    color: #FFD700; font-weight: 700; font-size: 1.2rem; text-transform: uppercase;
+}
+
+.pk-bottom-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(0deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.4) 100%);
+    padding: 16px 24px;
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    flex-wrap: wrap;
+}
+
+.pk-action-btn {
+    padding: 12px 24px; font-size: 0.95rem; font-weight: 700;
+    border: none; border-radius: 10px; cursor: pointer;
+    text-transform: uppercase; letter-spacing: 1px;
+    transition: all 0.15s;
+}
+.pk-action-btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
+.btn-fold  { background: linear-gradient(135deg, #E53935, #B71C1C); color: #fff; }
+.btn-check { background: linear-gradient(135deg, #78909C, #455A64); color: #fff; }
+.btn-call  { background: linear-gradient(135deg, #4CAF50, #2E7D32); color: #fff; }
+.btn-raise { background: linear-gradient(135deg, #FF9800, #E65100); color: #fff; }
+.btn-allin { background: linear-gradient(135deg, #9C27B0, #6A1B9A); color: #fff; }
+
+/* Raise group with slider */
+.raise-group {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,152,0,0.12); border-radius: 10px;
+    padding: 4px 10px 4px 4px;
+    border: 1px solid rgba(255,152,0,0.35);
+}
+.raise-slider-wrap {
+    display: flex; align-items: center; gap: 6px;
+}
+.raise-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 90px; height: 6px; border-radius: 3px;
+    background: rgba(255,255,255,0.2);
+    outline: none; cursor: pointer;
+}
+.raise-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #FF9800; border: 2px solid #fff;
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(255,152,0,0.5);
+}
+.raise-slider::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #FF9800; border: 2px solid #fff;
+    cursor: pointer;
+}
+.raise-label {
+    color: #FFD700; font-weight: 700; font-size: 0.85rem;
+    min-width: 50px; text-align: center;
+}
+
+.pk-hand-info {
+    position: fixed; top: 16px; right: 16px; z-index: 55;
+    background: rgba(0,0,0,0.82); border-radius: 12px; padding: 12px 18px;
+    border: 1px solid rgba(255,215,0,0.3);
+    min-width: 200px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+}
+
+#pk-bot-action {
+    position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+    z-index: 55;
+    background: rgba(0,0,0,0.8); color: #FFD700;
+    padding: 10px 24px; border-radius: 10px;
+    font-size: 1rem; font-weight: 600;
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    0%   { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ----- ROULETTE HUD ----- */
+#rt-hud { display: none; }
+
+.rt-top-bar {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+    z-index: 55;
+    background: rgba(0,0,0,0.82);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 12px;
+    display: flex; gap: 24px; align-items: center;
+    padding: 10px 20px;
+    font-size: 0.95rem;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+}
+
+#rt-player-chips,
+#rt-current-bet,
+#rt-last-result { color: #FFD700; font-weight: 700; }
+
+.rt-result-red { color: #ff6f6f !important; }
+.rt-result-black { color: #f0f0f0 !important; }
+.rt-result-green { color: #6dff90 !important; }
+
+.rt-panel {
+    position: fixed; left: 50%; bottom: 0; transform: translateX(-50%);
+    z-index: 56;
+    width: min(980px, 96vw);
+    background: linear-gradient(0deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.55) 100%);
+    border: 1px solid rgba(255,215,0,0.2);
+    border-bottom: none;
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    padding: 12px 14px 14px;
+    display: flex; flex-direction: column; gap: 10px;
+}
+
+.rt-amount-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.92rem; color: #ddd;
+}
+
+.rt-select {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-weight: 700;
+}
+
+.rt-color-bets {
+    display: flex; gap: 8px; flex-wrap: wrap;
+}
+
+.rt-color-btn {
+    border: 1px solid rgba(255,255,255,0.28);
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-weight: 700;
+    cursor: pointer;
+    color: #fff;
+    transition: transform .15s ease, filter .15s ease;
+}
+
+.rt-color-btn:hover { transform: translateY(-1px); filter: brightness(1.15); }
+.rt-color-btn.rt-selected {
+    outline: 2px solid #FFD700;
+    box-shadow: 0 0 14px rgba(255,215,0,0.45);
+}
+.rt-red { background: linear-gradient(135deg, #D32F2F, #8E0000); }
+.rt-black { background: linear-gradient(135deg, #2E2E2E, #111111); }
+.rt-green { background: linear-gradient(135deg, #2E7D32, #1B5E20); }
+
+.rt-number-title {
+    color: #FFD700;
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-top: 2px;
+}
+
+.rt-number-grid {
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.rt-number-btn {
+    border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 6px;
+    min-height: 30px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.rt-number-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 10px rgba(255,215,0,0.25);
+}
+
+.rt-num-red { background: #9b1c1c; }
+.rt-num-black { background: #1d1d1d; }
+.rt-num-green { background: #1f7c34; }
+
+.rt-number-btn.rt-winning {
+    outline: 2px solid #FFD700;
+    box-shadow: 0 0 14px rgba(255,215,0,0.5);
+}
+
+.rt-number-btn.rt-selected {
+    outline: 2px solid #64B5F6;
+    box-shadow: 0 0 12px rgba(100,181,246,0.45);
+}
+
+.rt-actions {
+    display: flex; gap: 10px; justify-content: flex-end;
+    margin-top: 2px;
+}
+
+.rt-spin-message {
+    top: 84px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1.15rem;
+    padding: 10px 24px;
+    border-radius: 12px;
+    letter-spacing: 1px;
+    z-index: 58;
+}
+
+/* ====== TOUCH CONTROLS (MOBILE) ====== */
+#touch-joystick-container {
+    position: fixed;
+    bottom: 30px;
+    left: 30px;
+    z-index: 50;
+    display: none;
+    width: 140px;
+    height: 140px;
+}
+
+#joystick-bg {
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 50%;
+    touch-action: none;
+}
+
+#joystick-stick {
+    position: absolute;
+    bottom: 50%;
+    left: 50%;
+    width: 50px;
+    height: 50px;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 215, 0, 0.5), rgba(255, 215, 0, 0.2));
+    border: 2px solid rgba(255, 215, 0, 0.6);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+#touch-buttons-container {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 50;
+    display: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.touch-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 215, 0, 0.4);
+    background: rgba(0, 0, 0, 0.5);
+    color: #FFD700;
+    font-size: 0.65rem;
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.touch-btn:active,
+.touch-btn.active {
+    background: rgba(255, 215, 0, 0.3);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+    border-color: rgba(255, 215, 0, 0.8);
+    transform: scale(0.95);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    #touch-joystick-container,
+    #touch-buttons-container {
+        display: flex;
+    }
+}
+
+@media (max-width: 768px) {
+    .menu-title { font-size: 2.8rem; }
+    .menu-btn { padding: 12px 24px; font-size: 1rem; }
+    .chip-btn { width: 48px; height: 48px; font-size: 0.75rem; }
+    .action-btn, .pk-action-btn { padding: 12px 18px; font-size: 0.9rem; }
+    
+    #touch-joystick-container {
+        bottom: 20px;
+        left: 20px;
+        width: 120px;
+        height: 120px;
+    }
+    
+    #joystick-stick {
+        width: 45px;
+        height: 45px;
+    }
+    
+    #touch-buttons-container {
+        bottom: 20px;
+        right: 20px;
+        gap: 10px;
+    }
+    
+    .touch-btn {
+        width: 56px;
+        height: 56px;
+        font-size: 0.6rem;
+    }
+    
+    #splash-screen .splash-controls {
+        padding: 12px 20px;
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .menu-title { font-size: 2.4rem; }
+    .menu-btn { padding: 10px 20px; font-size: 0.9rem; }
+    .chip-btn { width: 40px; height: 40px; font-size: 0.65rem; }
+    .action-btn, .pk-action-btn { padding: 10px 14px; font-size: 0.8rem; }
+    
+    #touch-joystick-container {
+        bottom: 15px;
+        left: 15px;
+        width: 110px;
+        height: 110px;
+    }
+    
+    #joystick-stick {
+        width: 40px;
+        height: 40px;
+    }
+    
+    #touch-buttons-container {
+        bottom: 15px;
+        right: 15px;
+        gap: 8px;
+    }
+    
+    .touch-btn {
+        width: 52px;
+        height: 52px;
+        font-size: 0.55rem;
+    }
+    
+    #splash-screen {
+        padding: 20px;
+    }
+    
+    #splash-screen .splash-controls {
+        padding: 10px 16px;
+        font-size: 0.75rem;
+        width: 100%;
+    }
+    
+    .ctrl-row kbd {
+        padding: 2px 6px;
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .menu-title { font-size: 2rem; }
+    .menu-subtitle { font-size: 0.95rem; }
+    
+    #touch-joystick-container {
+        width: 100px;
+        height: 100px;
+    }
+    
+    #joystick-stick {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .touch-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 0.5rem;
+    }
+}
