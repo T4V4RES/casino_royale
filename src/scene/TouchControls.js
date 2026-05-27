@@ -74,44 +74,57 @@ export class TouchControls {
         this.sprintBtn = document.getElementById('touch-sprint-btn');
         this.menuBtn = document.getElementById('touch-menu-btn');
     }
+
+    setVisible(visible) {
+        if (!this.isTouchDevice) return;
+        const display = visible ? 'flex' : 'none';
+        if (this.joystickBg?.parentElement) this.joystickBg.parentElement.style.display = display;
+        if (this.interactBtn?.parentElement) this.interactBtn.parentElement.style.display = display;
+    }
     
     setupTouchListeners() {
         // Joystick touch events
-        this.joystickBg.addEventListener('touchstart', (e) => this.onJoystickStart(e), false);
-        this.joystickBg.addEventListener('touchmove', (e) => this.onJoystickMove(e), false);
-        this.joystickBg.addEventListener('touchend', (e) => this.onJoystickEnd(e), false);
+        const touchOptions = { passive: false };
+
+        this.joystickBg.addEventListener('touchstart', (e) => this.onJoystickStart(e), touchOptions);
+        this.joystickBg.addEventListener('touchmove', (e) => this.onJoystickMove(e), touchOptions);
+        this.joystickBg.addEventListener('touchend', (e) => this.onJoystickEnd(e), touchOptions);
+        this.joystickBg.addEventListener('touchcancel', (e) => this.onJoystickEnd(e), touchOptions);
         
         // Button events
-        this.interactBtn.addEventListener('touchstart', () => {
+        this.interactBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
             this.interactBtn.classList.add('active');
             if (this.onInteract) this.onInteract();
-        }, false);
+        }, touchOptions);
         this.interactBtn.addEventListener('touchend', () => this.interactBtn.classList.remove('active'), false);
         
-        this.sprintBtn.addEventListener('touchstart', () => {
+        this.sprintBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
             this.isSprinting = true;
             this.sprintBtn.classList.add('active');
-        }, false);
+        }, touchOptions);
         this.sprintBtn.addEventListener('touchend', () => {
             this.isSprinting = false;
             this.sprintBtn.classList.remove('active');
         }, false);
         
-        this.menuBtn.addEventListener('touchstart', () => {
+        this.menuBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
             this.menuBtn.classList.add('active');
             if (this.onMenuToggle) this.onMenuToggle();
-        }, false);
+        }, touchOptions);
         this.menuBtn.addEventListener('touchend', () => this.menuBtn.classList.remove('active'), false);
         
         // Prevent context menu on long touch
-        this.domElement.addEventListener('touchmove', (e) => e.preventDefault(), false);
-        this.domElement.addEventListener('touchstart', (e) => this.onLookStart(e), false);
-        this.domElement.addEventListener('touchmove', (e) => this.onLookMove(e), false);
-        this.domElement.addEventListener('touchend', (e) => this.onLookEnd(e), false);
-        this.domElement.addEventListener('touchcancel', (e) => this.onLookEnd(e), false);
+        this.domElement.addEventListener('touchstart', (e) => this.onLookStart(e), touchOptions);
+        this.domElement.addEventListener('touchmove', (e) => this.onLookMove(e), touchOptions);
+        this.domElement.addEventListener('touchend', (e) => this.onLookEnd(e), touchOptions);
+        this.domElement.addEventListener('touchcancel', (e) => this.onLookEnd(e), touchOptions);
     }
     
     onJoystickStart(e) {
+        e.preventDefault();
         const touch = e.touches[0];
         this.touchStartX = touch.clientX;
         this.touchStartY = touch.clientY;
@@ -119,6 +132,7 @@ export class TouchControls {
     }
     
     onJoystickMove(e) {
+        e.preventDefault();
         if (!this.isTouching) return;
         
         const touch = e.touches[0];
@@ -142,6 +156,7 @@ export class TouchControls {
     }
     
     onJoystickEnd(e) {
+        e.preventDefault();
         this.isTouching = false;
         this.touchDeltaX = 0;
         this.touchDeltaY = 0;
@@ -153,8 +168,9 @@ export class TouchControls {
     }
 
     onLookStart(e) {
+        e.preventDefault();
         if (this.lookTouchId !== null) return;
-        const touch = Array.from(e.changedTouches).find(t => t.clientX > window.innerWidth * 0.35);
+        const touch = Array.from(e.changedTouches).find(t => t.clientX > window.innerWidth * 0.28);
         if (!touch) return;
         this.lookTouchId = touch.identifier;
         this.lookLastX = touch.clientX;
@@ -162,16 +178,18 @@ export class TouchControls {
     }
 
     onLookMove(e) {
+        e.preventDefault();
         if (this.lookTouchId === null) return;
         const touch = Array.from(e.changedTouches).find(t => t.identifier === this.lookTouchId);
         if (!touch) return;
-        this.lookDeltaX += touch.clientX - this.lookLastX;
-        this.lookDeltaY += touch.clientY - this.lookLastY;
+        this.lookDeltaX += THREE.MathUtils.clamp(touch.clientX - this.lookLastX, -80, 80);
+        this.lookDeltaY += THREE.MathUtils.clamp(touch.clientY - this.lookLastY, -80, 80);
         this.lookLastX = touch.clientX;
         this.lookLastY = touch.clientY;
     }
 
     onLookEnd(e) {
+        e.preventDefault();
         if (this.lookTouchId === null) return;
         const ended = Array.from(e.changedTouches).some(t => t.identifier === this.lookTouchId);
         if (ended) this.lookTouchId = null;
@@ -206,5 +224,23 @@ export class TouchControls {
         this.lookDeltaX = 0;
         this.lookDeltaY = 0;
         return delta;
+    }
+
+    reset() {
+        this.isTouching = false;
+        this.moveForward = false;
+        this.moveBackward = false;
+        this.moveLeft = false;
+        this.moveRight = false;
+        this.isSprinting = false;
+        this.lookTouchId = null;
+        this.lookDeltaX = 0;
+        this.lookDeltaY = 0;
+        if (this.joystickStick) {
+            this.joystickStick.style.transform = 'translate(-50%, -50%)';
+        }
+        this.interactBtn?.classList.remove('active');
+        this.sprintBtn?.classList.remove('active');
+        this.menuBtn?.classList.remove('active');
     }
 }

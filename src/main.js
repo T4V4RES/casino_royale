@@ -100,7 +100,7 @@ if (quality.lowPower) {
 colliders.forEach(c => fps.addCollider(c));
 const animatedSceneObjects = [];
 scene.traverse((obj) => {
-    if (quality.animatedDecor && obj.userData?.isFan) animatedSceneObjects.push(obj);
+    if (obj.userData?.isFan) animatedSceneObjects.push(obj);
 });
 
 // --- Interaction system ---
@@ -153,6 +153,7 @@ function enterCasino() {
     _updateFPSChipsDisplay();
     if (touch.isTouchDevice) {
         _hideLockHint();
+        touch.setVisible(true);
         interaction.showCrosshair();
     } else {
         _showLockHint();
@@ -281,6 +282,9 @@ function enterBlackjack() {
     savedCamPos = camera.position.clone();
     savedCamQuat = camera.quaternion.clone();
 
+    touch.reset();
+    touch.setVisible(false);
+    fps.stopMovement();
     fps.enabled = false;
     fps.unlock();
     interaction.hideAll();
@@ -292,7 +296,7 @@ function enterBlackjack() {
     const lookTarget = new THREE.Vector3(zone.position.x, 0.9, zone.position.z);
 
     // Smooth camera walk to seat
-    transitionAnim.smoothCameraMove(camera, seatPos, lookTarget, 700).then(() => {
+    transitionAnim.smoothCameraMove(camera, seatPos, lookTarget, quality.lowPower ? 260 : 700).then(() => {
         document.getElementById('bj-hud').style.display = 'block';
 
         bjCtrl = new BlackjackController(scene, camera, zone.position);
@@ -321,6 +325,9 @@ function enterPoker() {
     savedCamPos = camera.position.clone();
     savedCamQuat = camera.quaternion.clone();
 
+    touch.reset();
+    touch.setVisible(false);
+    fps.stopMovement();
     fps.enabled = false;
     fps.unlock();
     interaction.hideAll();
@@ -331,7 +338,7 @@ function enterPoker() {
     const seatPos = new THREE.Vector3(zone.position.x, 5.4, zone.position.z + 2.2);
     const lookTarget = new THREE.Vector3(zone.position.x, 0.9, zone.position.z);
 
-    transitionAnim.smoothCameraMove(camera, seatPos, lookTarget, 700).then(() => {
+    transitionAnim.smoothCameraMove(camera, seatPos, lookTarget, quality.lowPower ? 260 : 700).then(() => {
         document.getElementById('pk-hud').style.display = 'block';
 
         pkCtrl = new PokerController(scene, camera, zone.position);
@@ -360,6 +367,9 @@ function enterRoulette() {
     savedCamPos = camera.position.clone();
     savedCamQuat = camera.quaternion.clone();
 
+    touch.reset();
+    touch.setVisible(false);
+    fps.stopMovement();
     fps.enabled = false;
     fps.unlock();
     interaction.hideAll();
@@ -370,7 +380,7 @@ function enterRoulette() {
     const seatPos = new THREE.Vector3(zone.position.x, 5.2, zone.position.z + 2.1);
     const lookTarget = new THREE.Vector3(zone.position.x, 0.95, zone.position.z);
 
-    transitionAnim.smoothCameraMove(camera, seatPos, lookTarget, 700).then(() => {
+    transitionAnim.smoothCameraMove(camera, seatPos, lookTarget, quality.lowPower ? 260 : 700).then(() => {
         document.getElementById('rt-hud').style.display = 'block';
 
         rtCtrl = new RouletteController(scene, camera, zone.position);
@@ -552,19 +562,27 @@ function _returnToExploring() {
         const lookTarget = targetPos.clone().add(lookDir);
         transitionAnim.smoothCameraMove(camera, targetPos, lookTarget, 500).then(() => {
             camera.quaternion.copy(savedCamQuat);
+            touch.reset();
+            touch.setVisible(true);
+            fps.stopMovement();
             fps.enabled = true;
             fps.euler.setFromQuaternion(camera.quaternion);
             interaction.showAll();
             document.getElementById('fps-hud').style.display = 'block';
             _updateFPSChipsDisplay();
-            _showLockHint();
+            if (touch.isTouchDevice) _hideLockHint();
+            else _showLockHint();
         });
     } else {
+        touch.reset();
+        touch.setVisible(true);
+        fps.stopMovement();
         fps.enabled = true;
         interaction.showAll();
         document.getElementById('fps-hud').style.display = 'block';
         _updateFPSChipsDisplay();
-        _showLockHint();
+        if (touch.isTouchDevice) _hideLockHint();
+        else _showLockHint();
     }
 }
 
@@ -673,17 +691,19 @@ function animate() {
         if (touch.isTouchDevice) {
             const look = touch.getLookDelta();
             if (look.x || look.y) {
-                fps.rotateBy(look.x, look.y, 1.15);
+                fps.rotateBy(look.x, look.y, 1.9);
             }
         }
 
         // Sync touch controls with FPS
         const touchInput = touch.getMovementInput();
-        fps.moveForward = fps.moveForward || touchInput.forward;
-        fps.moveBackward = fps.moveBackward || touchInput.backward;
-        fps.moveLeft = fps.moveLeft || touchInput.left;
-        fps.moveRight = fps.moveRight || touchInput.right;
-        fps.isSprinting = fps.isSprinting || touchInput.sprint;
+        if (touch.isTouchDevice) {
+            fps.moveForward = touchInput.forward;
+            fps.moveBackward = touchInput.backward;
+            fps.moveLeft = touchInput.left;
+            fps.moveRight = touchInput.right;
+            fps.isSprinting = touchInput.sprint;
+        }
         
         fps.update(delta);
         interaction.update(camera.position);

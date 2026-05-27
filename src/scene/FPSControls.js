@@ -111,6 +111,16 @@ export class FPSControls {
         }
     }
 
+    stopMovement() {
+        this.moveForward = false;
+        this.moveBackward = false;
+        this.moveLeft = false;
+        this.moveRight = false;
+        this.isSprinting = false;
+        this.velocity.set(0, 0, 0);
+        this.direction.set(0, 0, 0);
+    }
+
     _checkCollision(newPos) {
         const r = this.playerRadius;
         for (const c of this.colliders) {

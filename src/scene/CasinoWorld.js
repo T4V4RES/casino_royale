@@ -238,7 +238,7 @@ export function buildCasinoWorld(scene, options = {}) {
     interactionZones.push(...slotZones);
 
     // ---- DECORATIONS ----
-    _buildDecorations(scene, M, colliders);
+    _buildDecorations(scene, M, colliders, options);
 
     // ---- ROPES & STANCHIONS ----
     _buildStanchions(scene, M, colliders);
@@ -1162,7 +1162,7 @@ function _buildSlotMachines(scene, M, colliders) {
 }
 
 /* ---- Decorations ---- */
-function _buildDecorations(scene, M, colliders) {
+function _buildDecorations(scene, M, colliders, options = {}) {
     // Potted plants
     const plantPositions = [[-12, -12], [12, -12], [-12, 12], [12, 12], [-6, 8], [6, 8]];
     plantPositions.forEach(([x, z]) => {
@@ -1228,9 +1228,15 @@ function _buildDecorations(scene, M, colliders) {
         hub.position.y = WALL_H - 0.15; fan.add(hub);
         const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 6), M.chrome);
         rod.position.y = WALL_H - 0.35; fan.add(rod);
+        const bladeMat = new THREE.MeshStandardMaterial({
+            color: options.lowPower ? 0x8A6A52 : 0x5D4037,
+            roughness: 0.55,
+            emissive: options.lowPower ? 0x18100A : 0x000000,
+            emissiveIntensity: options.lowPower ? 0.18 : 0,
+        });
         for (let i = 0; i < 4; i++) {
             const blade = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.02, 0.18),
-                new THREE.MeshStandardMaterial({ color: 0x5D4037, roughness: 0.6 }));
+                bladeMat);
             blade.position.y = WALL_H - 0.55;
             blade.rotation.y = (i / 4) * Math.PI * 2;
             blade.position.x = Math.cos(blade.rotation.y) * 0.5;
