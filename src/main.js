@@ -20,17 +20,38 @@ import { AnimationManager } from './scene/AnimationManager.js';
    Main entry – FPS Casino
    ================================================================== */
 
+const quality = (() => {
+    const ua = navigator.userAgent || '';
+    const isTouchSmall = matchMedia('(pointer: coarse)').matches || Math.min(window.innerWidth, window.innerHeight) <= 820;
+    const lowMemory = Number(navigator.deviceMemory || 8) <= 4;
+    const lowCores = Number(navigator.hardwareConcurrency || 8) <= 4;
+    const lowPower = isTouchSmall || lowMemory || lowCores;
+    return {
+        lowPower,
+        pixelRatio: lowPower ? Math.min(window.devicePixelRatio || 1, 1.05) : Math.min(window.devicePixelRatio || 1, 1.75),
+        shadows: !lowPower,
+        animatedDecor: !lowPower,
+        isMobileLike: /Android|iPhone|iPad|iPod/i.test(ua) || isTouchSmall,
+    };
+})();
+
 // --- Renderer ---
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+const renderer = new THREE.WebGLRenderer({
+    antialias: !quality.lowPower,
+    alpha: false,
+    powerPreference: 'high-performance',
+    stencil: false,
+    depth: true,
+});
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.shadowMap.autoUpdate = true;
+renderer.setPixelRatio(quality.pixelRatio);
+renderer.shadowMap.enabled = quality.shadows;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.shadowMap.autoUpdate = false;
 // Tone mapping cinematográfico (ICG-05). ACES é o standard moderno
 // para preservar highlights de luzes emissivas (bulbos, neon).
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.92;
+renderer.toneMappingExposure = quality.lowPower ? 1.0 : 0.92;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.getElementById('canvas-wrap').appendChild(renderer.domElement);
 
@@ -39,19 +60,21 @@ const scene = new THREE.Scene();
 // Fundo violeta-escuro vinhoso → harmoniza com paredes/carpete bordeaux
 scene.background = new THREE.Color(0x0A0610);
 // Nevoeiro mais subtil e quente: dá profundidade sem comer contraste
-scene.fog = new THREE.Fog(0x120A18, 16, 42);  // Improved depth perception
+scene.fog = new THREE.Fog(0x120A18, quality.lowPower ? 13 : 16, quality.lowPower ? 30 : 42);
 
 // --- Environment map ---
 // Probe-map gerado em runtime a partir de RoomEnvironment. Dá
 // reflexões plausíveis em mármore/ouro/cromo/vidro sem necessidade
 // de ray-tracing real (técnica complementar ao ICG-08, abordagem
 // rasterizada via image-based lighting).
-const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-scene.environmentIntensity = 0.38;
+if (!quality.lowPower) {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environmentIntensity = 0.38;
+}
 
 // --- Camera ---
-const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, 100);
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, quality.lowPower ? 45 : 100);
 scene.add(camera);
 
 // --- FPS Controls ---
@@ -62,11 +85,22 @@ fps.bounds = { minX: -13.2, maxX: 13.2, minZ: -13.2, maxZ: 13.2 };
 const touch = new TouchControls(renderer.domElement);
 
 // --- Build casino world ---
-const { colliders, interactionZones } = buildCasinoWorld(scene);
+const { colliders, interactionZones } = buildCasinoWorld(scene, quality);
+if (quality.lowPower) {
+    scene.traverse((obj) => {
+        if (obj.isMesh) {
+            obj.castShadow = false;
+            obj.receiveShadow = false;
+            obj.frustumCulled = true;
+        }
+    });
+} else {
+    renderer.shadowMap.needsUpdate = true;
+}
 colliders.forEach(c => fps.addCollider(c));
 const animatedSceneObjects = [];
 scene.traverse((obj) => {
-    if (obj.userData?.isFan) animatedSceneObjects.push(obj);
+    if (quality.animatedDecor && obj.userData?.isFan) animatedSceneObjects.push(obj);
 });
 
 // --- Interaction system ---
@@ -674,4 +708,5 @@ window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(quality.pixelRatio);
 });

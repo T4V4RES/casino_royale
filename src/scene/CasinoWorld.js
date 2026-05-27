@@ -22,18 +22,19 @@ const ROOM_W = 28, ROOM_D = 28, WALL_H = 5.5;
    color (albedo), normalMap (relevo) e roughnessMap (variação de
    microsuperfície). Aplicados nas grandes superfícies para que a
    iluminação tenha algo a que reagir. Ver ICG-07. */
-function createMaterials() {
+function createMaterials(options = {}) {
+    const texSize = options.lowPower ? 256 : 512;
     const pokerCenterTexture = createPokerCenterTexture();
 
     // PBR sets
-    const carpetSet  = createCarpetPBR(512);
-    const woodSet    = createWoodPBR(512, 4);
-    const marbleSet  = createMarblePBR(512, '#EFE7D6');
-    const marbleDarkSet = createMarblePBR(512, '#1F1F22');
-    const wallSet    = createWallPBR(512);
-    const feltSet    = createFeltPBR(512, '#0F5D2E');
-    const feltLightSet = createFeltPBR(512, '#196B3A');
-    const ceilSet    = createCeilingPBR(512);
+    const carpetSet  = createCarpetPBR(texSize);
+    const woodSet    = createWoodPBR(texSize, options.lowPower ? 3 : 4);
+    const marbleSet  = createMarblePBR(texSize, '#EFE7D6');
+    const marbleDarkSet = createMarblePBR(texSize, '#1F1F22');
+    const wallSet    = createWallPBR(texSize);
+    const feltSet    = createFeltPBR(texSize, '#0F5D2E');
+    const feltLightSet = createFeltPBR(texSize, '#196B3A');
+    const ceilSet    = createCeilingPBR(texSize);
 
     // Wall texture is repeated horizontally over the whole wall length
     wallSet.map.repeat.set(8, 3);
@@ -88,7 +89,7 @@ function createMaterials() {
             color: 0xFFFFFF,
         }),
         darkWood: (() => {
-            const dwSet = createWoodPBR(512, 4);
+            const dwSet = createWoodPBR(texSize, options.lowPower ? 3 : 4);
             const m = new THREE.MeshPhysicalMaterial({
                 map: dwSet.map,
                 normalMap: dwSet.normalMap,
@@ -151,8 +152,8 @@ function createMaterials() {
 /* ==================================================================
    MAIN BUILD FUNCTION
    ================================================================== */
-export function buildCasinoWorld(scene) {
-    const M = createMaterials();
+export function buildCasinoWorld(scene, options = {}) {
+    const M = createMaterials(options);
     const colliders = [];
     const interactionZones = [];
 
@@ -167,7 +168,7 @@ export function buildCasinoWorld(scene) {
     _buildPillars(scene, M, colliders);
 
     // ---- LIGHTING ----
-    _buildLighting(scene);
+    _buildLighting(scene, options);
 
     // ---- BLACKJACK TABLE (left side) ----
     const bjPos = new THREE.Vector3(-6, 0, -4);
@@ -394,23 +395,24 @@ function _buildPillars(scene, M, colliders) {
                                                   realisticamente o mármore
                                                   do balcão, sem sombras)
      - Luzes RGB suaves para "ambiente neon"   → cor do ambiente Vegas */
-function _buildLighting(scene) {
+function _buildLighting(scene, options = {}) {
+    const lowPower = !!options.lowPower;
     // Hemisphere — radiação indirecta (cor do tecto vs cor do carpete)
     // Enhanced for richer indirect lighting
-    scene.add(new THREE.HemisphereLight(0xFFF0D0, 0x2A1530, 0.24));
+    scene.add(new THREE.HemisphereLight(0xFFF0D0, 0x2A1530, lowPower ? 0.46 : 0.24));
 
     // Subtle ambient warm fill (bem fraco — prevenção de sombras puras)
     // Increased for more natural ambient light
-    scene.add(new THREE.AmbientLight(0xFFF1D6, 0.06));
+    scene.add(new THREE.AmbientLight(0xFFF1D6, lowPower ? 0.22 : 0.06));
 
     // Key directional light — vem alta e ligeiramente lateral, cobre
     // toda a sala com sombras unificadas. Valor baixo para não
     // anular a sensação de iluminação interior nocturna.
-    const key = new THREE.DirectionalLight(0xFFECC0, 0.24);
+    const key = new THREE.DirectionalLight(0xFFECC0, lowPower ? 0.14 : 0.24);
     key.position.set(9, 15, 7);  // Slightly higher for better coverage
     key.target.position.set(0, 0.5, 0);
-    key.castShadow = true;
-    key.shadow.mapSize.set(2048, 2048);
+    key.castShadow = !lowPower;
+    key.shadow.mapSize.set(lowPower ? 512 : 2048, lowPower ? 512 : 2048);
     key.shadow.camera.near = 0.5;  // Closer to catch details
     key.shadow.camera.far = 45;    // Extended range
     key.shadow.camera.left = -18;  // Wider coverage
@@ -430,8 +432,8 @@ function _buildLighting(scene) {
     scene.add(fillDir);
 
     // Central chandelier — multiple bulbs hanging at the room centre
-    _buildChandelier(scene, 0, WALL_H - 0.05, -2.6);
-    _buildWallSconces(scene);
+    _buildChandelier(scene, 0, WALL_H - 0.05, -2.6, options);
+    _buildWallSconces(scene, options);
 
     // Area light over the bar (acrescenta highlights de glamour
     // no balcão de mármore) — enhanced for richer appearance
@@ -443,21 +445,23 @@ function _buildLighting(scene) {
     // Overhead pendant per table
     [[-6, -4], [6, -4], [0, 1.2]].forEach(([x, z]) => {
         // Main table spot light with enhanced shadow quality
-        const spot = new THREE.SpotLight(0xFFF8E1, 22, 12, Math.PI / 4.6, 0.6, 1.5);
+        const spot = new THREE.SpotLight(0xFFF8E1, lowPower ? 13 : 22, 12, Math.PI / 4.6, 0.6, 1.5);
         spot.position.set(x, WALL_H - 0.35, z + 0.12);
         spot.target.position.set(x, -0.05, z);
-        spot.castShadow = true;
-        spot.shadow.mapSize.set(1536, 1536);  // Increased shadow resolution
+        spot.castShadow = !lowPower;
+        spot.shadow.mapSize.set(lowPower ? 512 : 1536, lowPower ? 512 : 1536);
         spot.shadow.bias = -0.00035;
         spot.shadow.normalBias = 0.015;
         spot.shadow.radius = 2.5;
         scene.add(spot); scene.add(spot.target);
 
         // Warm fill spot light for depth
-        const fillSpot = new THREE.SpotLight(0xFFD4A3, 3.5, 8, Math.PI / 6, 0.8, 1.8);
-        fillSpot.position.set(x - 1.5, WALL_H - 0.8, z);
-        fillSpot.target.position.set(x, 0, z);
-        scene.add(fillSpot); scene.add(fillSpot.target);
+        if (!lowPower) {
+            const fillSpot = new THREE.SpotLight(0xFFD4A3, 3.5, 8, Math.PI / 6, 0.8, 1.8);
+            fillSpot.position.set(x - 1.5, WALL_H - 0.8, z);
+            fillSpot.target.position.set(x, 0, z);
+            scene.add(fillSpot); scene.add(fillSpot.target);
+        }
 
         // Lamp shade with improved material
         const shade = new THREE.Mesh(
@@ -502,16 +506,16 @@ function _buildLighting(scene) {
     const atmSpot = new THREE.SpotLight(0xE0F0FF, 18, 10, Math.PI/4.5, 0.35, 1.3);
     atmSpot.position.set(0, WALL_H - 0.25, -12);
     atmSpot.target.position.set(0, 1, -12.5);
-    atmSpot.castShadow = true;
-    atmSpot.shadow.mapSize.set(1024, 1024);
+    atmSpot.castShadow = !lowPower;
+    atmSpot.shadow.mapSize.set(lowPower ? 512 : 1024, lowPower ? 512 : 1024);
     scene.add(atmSpot); scene.add(atmSpot.target);
 
     // Bar area warm light — enhanced
     const barLight = new THREE.SpotLight(0xFFB84D, 5, 7, Math.PI / 6, 0.76, 2.0);
     barLight.position.set(0, 3.2, 10.6);
     barLight.target.position.set(0, 1.05, 10);
-    barLight.castShadow = true;
-    barLight.shadow.mapSize.set(1024, 1024);
+    barLight.castShadow = !lowPower;
+    barLight.shadow.mapSize.set(lowPower ? 512 : 1024, lowPower ? 512 : 1024);
     scene.add(barLight); scene.add(barLight.target);
 
     // Low fill only, so local lights still define the room.
@@ -521,16 +525,19 @@ function _buildLighting(scene) {
     fill2.position.set(9, 4.5, 0); scene.add(fill2);
 
     // Subtle coloured rim lights from the entrance — enhanced for more drama
-    const rim = new THREE.PointLight(0xFF5599, 0.35, 12);
-    rim.position.set(0, 2.8, 13.5); scene.add(rim);
-    const rim2 = new THREE.PointLight(0x5599FF, 0.25, 10);
-    rim2.position.set(0, 2.8, -13.5); scene.add(rim2);
+    if (!lowPower) {
+        const rim = new THREE.PointLight(0xFF5599, 0.35, 12);
+        rim.position.set(0, 2.8, 13.5); scene.add(rim);
+        const rim2 = new THREE.PointLight(0x5599FF, 0.25, 10);
+        rim2.position.set(0, 2.8, -13.5); scene.add(rim2);
+    }
 }
 
 /* ---- Wall sconces ----
    Apliques pequenos com point lights de baixa intensidade. Preenchem
    as laterais da sala sem competir com os spots das mesas. */
-function _buildWallSconces(scene) {
+function _buildWallSconces(scene, options = {}) {
+    const lowPower = !!options.lowPower;
     const metalMat = new THREE.MeshStandardMaterial({
         color: 0xB08D2F,
         roughness: 0.22,
@@ -556,7 +563,7 @@ function _buildWallSconces(scene) {
         { pos: [ 7.0, 3.0,  13.82], rotY: Math.PI },
     ];
 
-    sconces.forEach(({ pos, rotY }) => {
+    sconces.forEach(({ pos, rotY }, i) => {
         const g = new THREE.Group();
         const backplate = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.045, 18), metalMat);
         backplate.rotation.x = Math.PI / 2;
@@ -579,11 +586,13 @@ function _buildWallSconces(scene) {
         bulb.position.set(0, 0.06, 0.37);
         g.add(bulb);
 
-        const light = new THREE.SpotLight(0xFFD090, 0.9, 5.2, Math.PI / 5.5, 0.65, 1.7);
-        light.position.set(0, 0.08, 0.37);
-        light.target.position.set(0, 0.95, 0.24);
-        g.add(light);
-        g.add(light.target);
+        if (!lowPower || i % 3 === 0) {
+            const light = new THREE.SpotLight(0xFFD090, lowPower ? 0.45 : 0.9, 5.2, Math.PI / 5.5, 0.65, 1.7);
+            light.position.set(0, 0.08, 0.37);
+            light.target.position.set(0, 0.95, 0.24);
+            g.add(light);
+            g.add(light.target);
+        }
 
         g.position.set(...pos);
         g.rotation.y = rotY;
@@ -595,7 +604,8 @@ function _buildWallSconces(scene) {
    Anel dourado pendente do tecto com bulbos emissivos ao redor.
    Cada bulbo tem uma point-light fraca → contribui para a iluminação
    global e gera reflexões nos materiais brilhantes (mármore, ouro). */
-function _buildChandelier(scene, cx, ceilY, cz) {
+function _buildChandelier(scene, cx, ceilY, cz, options = {}) {
+    const lowPower = !!options.lowPower;
     const g = new THREE.Group();
     // Cable
     const cable = new THREE.Mesh(
@@ -647,10 +657,11 @@ function _buildChandelier(scene, cx, ceilY, cz) {
         const by = ceilY - 1.0;
         const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 12), bulbMat);
         bulb.position.set(bx, by, bz); g.add(bulb);
-        // Tiny light per bulb
-        const pl = new THREE.PointLight(0xFFD78A, 0.45, 4);
-        pl.position.set(bx, by, bz);
-        g.add(pl);
+        if (!lowPower && i % 2 === 0) {
+            const pl = new THREE.PointLight(0xFFD78A, 0.45, 4);
+            pl.position.set(bx, by, bz);
+            g.add(pl);
+        }
     }
     // Central pendant crystal (large emissive sphere)
     const crystal = new THREE.Mesh(
@@ -664,7 +675,7 @@ function _buildChandelier(scene, cx, ceilY, cz) {
     );
     crystal.position.y = ceilY - 1.05; g.add(crystal);
     // Main downward light from chandelier
-    const main = new THREE.PointLight(0xFFE7B5, 5, 14, 1.5);
+    const main = new THREE.PointLight(0xFFE7B5, lowPower ? 2.2 : 5, lowPower ? 10 : 14, 1.5);
     main.position.set(0, ceilY - 1.05, 0);
     g.add(main);
 
