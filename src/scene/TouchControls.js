@@ -33,6 +33,7 @@ export class TouchControls {
         // Callbacks
         this.onInteract = null;
         this.onMenuToggle = null;
+        this.lastButtonPressAt = new Map();
         
         if (this.isTouchDevice) {
             this.setupTouchUI();
@@ -59,9 +60,9 @@ export class TouchControls {
         const buttonsContainer = document.createElement('div');
         buttonsContainer.id = 'touch-buttons-container';
         buttonsContainer.innerHTML = `
-            <button id="touch-interact-btn" class="touch-btn">E<br>Interact</button>
-            <button id="touch-sprint-btn" class="touch-btn sprint">Sprint</button>
-            <button id="touch-menu-btn" class="touch-btn">☰<br>Menu</button>
+            <button id="touch-interact-btn" class="touch-btn" type="button">E<br>Interagir</button>
+            <button id="touch-sprint-btn" class="touch-btn sprint" type="button">Correr</button>
+            <button id="touch-menu-btn" class="touch-btn" type="button">☰<br>Sair</button>
         `;
         
         this.domElement.parentElement.appendChild(joystickContainer);
@@ -92,29 +93,58 @@ export class TouchControls {
         this.joystickBg.addEventListener('touchcancel', (e) => this.onJoystickEnd(e), touchOptions);
         
         // Button events
-        this.interactBtn.addEventListener('touchstart', (e) => {
+        const press = (e, button, callback) => {
             e.preventDefault();
-            this.interactBtn.classList.add('active');
-            if (this.onInteract) this.onInteract();
+            e.stopPropagation();
+            button.classList.add('active');
+            const now = performance.now();
+            const lastPress = this.lastButtonPressAt.get(button.id);
+            if (lastPress !== undefined && now - lastPress < 300) return;
+            this.lastButtonPressAt.set(button.id, now);
+            callback();
+        };
+        const release = (button) => {
+            button.classList.remove('active');
+        };
+
+        this.interactBtn.addEventListener('touchstart', (e) => {
+            press(e, this.interactBtn, () => this.onInteract?.());
         }, touchOptions);
-        this.interactBtn.addEventListener('touchend', () => this.interactBtn.classList.remove('active'), false);
+        this.interactBtn.addEventListener('pointerup', (e) => {
+            press(e, this.interactBtn, () => this.onInteract?.());
+            release(this.interactBtn);
+        });
+        this.interactBtn.addEventListener('touchend', () => release(this.interactBtn), false);
         
         this.sprintBtn.addEventListener('touchstart', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             this.isSprinting = true;
             this.sprintBtn.classList.add('active');
         }, touchOptions);
+        this.sprintBtn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.isSprinting = true;
+            this.sprintBtn.classList.add('active');
+        });
         this.sprintBtn.addEventListener('touchend', () => {
             this.isSprinting = false;
             this.sprintBtn.classList.remove('active');
         }, false);
+        this.sprintBtn.addEventListener('pointerup', () => {
+            this.isSprinting = false;
+            this.sprintBtn.classList.remove('active');
+        });
         
         this.menuBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            this.menuBtn.classList.add('active');
-            if (this.onMenuToggle) this.onMenuToggle();
+            press(e, this.menuBtn, () => this.onMenuToggle?.());
         }, touchOptions);
-        this.menuBtn.addEventListener('touchend', () => this.menuBtn.classList.remove('active'), false);
+        this.menuBtn.addEventListener('pointerup', (e) => {
+            press(e, this.menuBtn, () => this.onMenuToggle?.());
+            release(this.menuBtn);
+        });
+        this.menuBtn.addEventListener('touchend', () => release(this.menuBtn), false);
         
         // Prevent context menu on long touch
         this.domElement.addEventListener('touchstart', (e) => this.onLookStart(e), touchOptions);

@@ -27,13 +27,15 @@ export class BarSystem {
         this._modal = document.getElementById('bar-modal');
         this._drinksEl = document.getElementById('bar-drinks-count');
         this._statusEl = document.getElementById('bar-status');
+        this.isTouchDevice = window.matchMedia?.('(pointer: coarse)')?.matches || navigator.maxTouchPoints > 0;
 
         this._drinkBtn = document.getElementById('bar-drink-fino');
         this._closeBtn = document.getElementById('bar-close');
 
         this._drinkBtn?.addEventListener('click', () => {
             if (this.blackoutLocked) return;
-            this._orderMug();
+            if (this.hasActiveMug) this._sipMug();
+            else this._orderMug();
             this._flashDrink();
         });
 
@@ -97,8 +99,8 @@ export class BarSystem {
         if (this.camera) this.camera.add(this.mugGroup);
 
         if (this._drinkBtn) {
-            this._drinkBtn.textContent = 'Caneca servida (F para beber)';
-            this._drinkBtn.disabled = true;
+            this._drinkBtn.textContent = this.isTouchDevice ? 'Beber' : 'Caneca servida (F para beber)';
+            this._drinkBtn.disabled = !this.isTouchDevice;
         }
     }
 
@@ -144,6 +146,9 @@ export class BarSystem {
                 this._drinkBtn.disabled = false;
             }
             if (this.onDrink) this.onDrink();
+        } else if (this._drinkBtn && this.isTouchDevice) {
+            const remaining = this.maxSips - this.sipsTaken;
+            this._drinkBtn.textContent = `Beber (${remaining})`;
         }
     }
 

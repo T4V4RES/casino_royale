@@ -24,15 +24,10 @@ export class AnimationManager {
     update() {
         const now = performance.now();
 
-        // Process tweens
-        this.active = this.active.filter(a => {
-            const t = Math.min((now - a.t0) / a.duration, 1);
-            a.target[a.prop] = a.start + a.delta * a.easeFn(t);
-            if (t >= 1) { a.resolve(); return false; }
-            return true;
-        });
-
-        // Character idle animations
+        // Idle animations run FIRST so that any active reaction tween (processed
+        // afterwards) overrides the idle pose on the same frame. Previously idle
+        // ran last and overwrote the head/body reaction tweens every frame, so
+        // only arm-based reactions like 'check' were ever visible.
         const elapsed = (now - this._startTime) * 0.001;
         this.characters.forEach(c => {
             if (!c.userData) return;
@@ -56,6 +51,14 @@ export class AnimationManager {
                     ch.rotation.x = Math.sin(t * 0.9 + side * 1.5) * 0.025;
                 });
             });
+        });
+
+        // Process tweens AFTER idle so reactions take precedence over breathing.
+        this.active = this.active.filter(a => {
+            const t = Math.min((now - a.t0) / a.duration, 1);
+            a.target[a.prop] = a.start + a.delta * a.easeFn(t);
+            if (t >= 1) { a.resolve(); return false; }
+            return true;
         });
     }
 
@@ -187,24 +190,19 @@ export class AnimationManager {
 
         if (reaction === 'nod') {
             if (head) {
-                await Promise.all([
-                    this.animate(head.rotation, 'x', 0.2, 180, AnimationManager.easeOutCubic),
-                    this.animate(charGroup.position, 'y', baseY - 0.01, 180),
-                ]);
-                await this.wait(80);
-                await Promise.all([
-                    this.animate(head.rotation, 'x', -0.05, 200),
-                    this.animate(charGroup.position, 'y', baseY, 200),
-                ]);
-                await this.animate(head.rotation, 'x', 0, 150);
+                const startX = head.rotation.x;
+                await this.animate(head.rotation, 'x', startX + 0.18, 150, AnimationManager.easeOutCubic);
+                await this.animate(head.rotation, 'x', startX - 0.04, 170, AnimationManager.easeInOutCubic);
+                await this.animate(head.rotation, 'x', startX, 130, AnimationManager.easeInOutCubic);
             }
         } else if (reaction === 'shake') {
             if (head) {
+                const startY = head.rotation.y;
                 for (let i = 0; i < 2; i++) {
-                    await this.animate(head.rotation, 'y', 0.25, 120, AnimationManager.easeOutCubic);
-                    await this.animate(head.rotation, 'y', -0.25, 200, AnimationManager.easeInOutCubic);
+                    await this.animate(head.rotation, 'y', startY + 0.22, 110, AnimationManager.easeOutCubic);
+                    await this.animate(head.rotation, 'y', startY - 0.22, 170, AnimationManager.easeInOutCubic);
                 }
-                await this.animate(head.rotation, 'y', 0, 150);
+                await this.animate(head.rotation, 'y', startY, 130);
             }
         } else if (reaction === 'celebrate') {
             await Promise.all([
@@ -220,16 +218,16 @@ export class AnimationManager {
             ]);
         } else if (reaction === 'think') {
             if (head) {
+                const startX = head.rotation.x;
+                const startZ = head.rotation.z;
                 await Promise.all([
-                    this.animate(head.rotation, 'z', 0.12, 300),
-                    this.animate(head.rotation, 'x', 0.08, 300),
-                    this.animate(charGroup.position, 'y', baseY - 0.02, 300),
+                    this.animate(head.rotation, 'z', startZ + 0.10, 260),
+                    this.animate(head.rotation, 'x', startX + 0.07, 260),
                 ]);
                 await this.wait(350);
                 await Promise.all([
-                    this.animate(head.rotation, 'z', 0, 250),
-                    this.animate(head.rotation, 'x', 0, 250),
-                    this.animate(charGroup.position, 'y', baseY, 250),
+                    this.animate(head.rotation, 'z', startZ, 220),
+                    this.animate(head.rotation, 'x', startX, 220),
                 ]);
             }
         } else if (reaction === 'surprise') {
@@ -246,16 +244,16 @@ export class AnimationManager {
             }
         } else if (reaction === 'fold') {
             if (head) {
+                const startX = head.rotation.x;
+                const startZ = head.rotation.z;
                 await Promise.all([
-                    this.animate(head.rotation, 'x', 0.25, 250),
-                    this.animate(head.rotation, 'z', -0.05, 250),
-                    this.animate(charGroup.position, 'y', baseY - 0.03, 250),
+                    this.animate(head.rotation, 'x', startX + 0.22, 230),
+                    this.animate(head.rotation, 'z', startZ - 0.05, 230),
                 ]);
                 await this.wait(250);
                 await Promise.all([
-                    this.animate(head.rotation, 'x', 0, 320),
-                    this.animate(head.rotation, 'z', 0, 320),
-                    this.animate(charGroup.position, 'y', baseY, 320),
+                    this.animate(head.rotation, 'x', startX, 280),
+                    this.animate(head.rotation, 'z', startZ, 280),
                 ]);
             }
         } else if (reaction === 'check') {
@@ -266,23 +264,73 @@ export class AnimationManager {
                 x: part.rotation.x,
                 y: part.rotation.y,
                 z: part.rotation.z,
+                py: part.position.y,
             }));
 
             await Promise.all(armParts.map(part => Promise.all([
                 this.animate(part.rotation, 'x', part.rotation.x - 0.55, 120, AnimationManager.easeOutCubic),
                 this.animate(part.rotation, 'z', part.rotation.z - 0.22, 120, AnimationManager.easeOutCubic),
             ])).flat());
-            await Promise.all(armParts.map(part =>
-                this.animate(part.position, 'y', part.position.y - 0.035, 80, AnimationManager.easeOutCubic)
+            await Promise.all(starts.map(({ part, py }) =>
+                this.animate(part.position, 'y', py - 0.035, 80, AnimationManager.easeOutCubic)
             ));
-            await Promise.all(armParts.map(part =>
-                this.animate(part.position, 'y', part.position.y + 0.035, 110, AnimationManager.easeOutBack)
+            await Promise.all(starts.map(({ part, py }) =>
+                this.animate(part.position, 'y', py, 110, AnimationManager.easeOutBack)
             ));
-            await Promise.all(starts.map(({ part, x, y, z }) => Promise.all([
+            await Promise.all(starts.map(({ part, x, y, z, py }) => Promise.all([
                 this.animate(part.rotation, 'x', x, 180),
                 this.animate(part.rotation, 'y', y, 180),
                 this.animate(part.rotation, 'z', z, 180),
+                this.animate(part.position, 'y', py, 180),
             ])).flat());
+        } else if (reaction === 'call') {
+            const headStartX = head?.rotation.x || 0;
+            const rightArm = this._findParts(charGroup, 'right', ['UpperArm', 'Elbow', 'Forearm', 'Cuff', 'Hand']);
+            const starts = rightArm.map(part => ({
+                part,
+                x: part.rotation.x,
+                y: part.rotation.y,
+                z: part.rotation.z,
+                pz: part.position.z,
+            }));
+
+            await Promise.all([
+                head ? this.animate(head.rotation, 'x', headStartX + 0.08, 140, AnimationManager.easeOutCubic) : Promise.resolve(),
+                ...rightArm.map(part => this.animate(part.position, 'z', part.position.z + 0.045, 140, AnimationManager.easeOutCubic)),
+            ]);
+            await Promise.all([
+                head ? this.animate(head.rotation, 'x', headStartX, 170, AnimationManager.easeInOutCubic) : Promise.resolve(),
+                ...starts.map(({ part, pz }) => this.animate(part.position, 'z', pz, 170, AnimationManager.easeInOutCubic)),
+            ]);
+        } else if (reaction === 'raise') {
+            const armParts = this._findParts(charGroup, 'right', ['UpperArm', 'Elbow', 'Forearm', 'Cuff', 'Hand']);
+            const starts = armParts.map(part => ({
+                part,
+                x: part.rotation.x,
+                y: part.rotation.y,
+                z: part.rotation.z,
+                py: part.position.y,
+            }));
+            const headStartX = head?.rotation.x || 0;
+
+            await Promise.all([
+                head ? this.animate(head.rotation, 'x', headStartX - 0.08, 160, AnimationManager.easeOutBack) : Promise.resolve(),
+                ...armParts.map(part => Promise.all([
+                    this.animate(part.rotation, 'x', part.rotation.x - 0.42, 160, AnimationManager.easeOutCubic),
+                    this.animate(part.rotation, 'z', part.rotation.z + 0.18, 160, AnimationManager.easeOutCubic),
+                    this.animate(part.position, 'y', part.position.y + 0.045, 160, AnimationManager.easeOutCubic),
+                ])).flat(),
+            ]);
+            await this.wait(120);
+            await Promise.all([
+                head ? this.animate(head.rotation, 'x', headStartX, 220, AnimationManager.easeInOutCubic) : Promise.resolve(),
+                ...starts.map(({ part, x, y, z, py }) => Promise.all([
+                    this.animate(part.rotation, 'x', x, 220),
+                    this.animate(part.rotation, 'y', y, 220),
+                    this.animate(part.rotation, 'z', z, 220),
+                    this.animate(part.position, 'y', py, 220),
+                ])).flat(),
+            ]);
         }
     }
 

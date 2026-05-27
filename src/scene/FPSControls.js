@@ -61,7 +61,9 @@ export class FPSControls {
     }
 
     unlock() {
-        document.exitPointerLock();
+        if (document.pointerLockElement) {
+            document.exitPointerLock();
+        }
     }
 
     _onPointerLockChange() {

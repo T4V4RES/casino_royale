@@ -1108,20 +1108,31 @@ function _buildSlotMachines(scene, M, colliders) {
         scr.position.set(0, 1.08, 0.316); g.add(scr);
 
         const reelMat = new THREE.MeshStandardMaterial({ color: 0xF6E8C8, roughness: 0.35, metalness: 0.05 });
+        const slotSymbolColors = [0xD32F2F, 0x2E7D32, 0xFBC02D];
+        const slotSymbolEmissives = [0x330000, 0x003300, 0x332200];
+        const slotReels = [];
         [-0.17, 0, 0.17].forEach((rx, rIdx) => {
+            // Grouping reel + symbol lets us spin them together around X-axis
+            const reelGroup = new THREE.Group();
+            reelGroup.position.set(rx, 1.08, 0.324);
+
             const reel = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.26, 0.012), reelMat);
-            reel.position.set(rx, 1.08, 0.324);
-            g.add(reel);
+            reelGroup.add(reel);
+
+            const startIdx = (idx + rIdx) % slotSymbolColors.length;
             const symbol = new THREE.Mesh(
                 new THREE.CircleGeometry(0.04, 16),
                 new THREE.MeshStandardMaterial({
-                    color: [0xD32F2F, 0x2E7D32, 0xFBC02D][(idx + rIdx) % 3],
-                    emissive: [0x330000, 0x003300, 0x332200][(idx + rIdx) % 3],
+                    color: slotSymbolColors[startIdx],
+                    emissive: slotSymbolEmissives[startIdx],
                     emissiveIntensity: 0.2,
                 })
             );
-            symbol.position.set(rx, 1.08, 0.332);
-            g.add(symbol);
+            symbol.position.set(0, 0, 0.009);
+            reelGroup.add(symbol);
+
+            g.add(reelGroup);
+            slotReels.push({ group: reelGroup, symbol, spinning: false });
         });
 
         // Handle
@@ -1150,7 +1161,8 @@ function _buildSlotMachines(scene, M, colliders) {
             radius: 1.45,
             label: 'Slots',
             approachPos: new THREE.Vector3(x + (x < 0 ? 1.0 : -1.0), 1.7, z),
-            lookAt: new THREE.Vector3(x, 1.0, z)
+            lookAt: new THREE.Vector3(x, 1.0, z),
+            slotReels,
         });
 
         colliders.push({

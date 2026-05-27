@@ -29,10 +29,11 @@ const BOT_COLORS = [0x3949AB, 0x37474F, 0xAD1457];
    PokerController – FPS mode (no own room/lighting)
    ================================================================== */
 export class PokerController {
-    constructor(scene, camera, tablePos) {
+    constructor(scene, camera, tablePos, options = {}) {
         this.scene = scene;
         this.camera = camera;
         this.tablePos = tablePos || new THREE.Vector3(0, 0, 0);
+        this.liteMode = !!options.liteMode;
         this.game = new PokerGame();
         this.anim = new AnimationManager();
         this.cards3D = [];
@@ -59,6 +60,11 @@ export class PokerController {
 
     /* ---- Build scene elements at table zone ---- */
     init() {
+        if (this.liteMode) {
+            this.game.init(this.playerChips);
+            return;
+        }
+
         // Create bot characters (no player character – FPS camera IS the player)
         const ox = this.tablePos.x, oz = this.tablePos.z;
         for (let i = 1; i < 4; i++) {
@@ -118,6 +124,11 @@ export class PokerController {
 
             this._updatePhaseLabel();
             this._updatePotDisplay();
+
+            if (this.liteMode) {
+                await this._processUntilPlayer();
+                return;
+            }
 
             // Deal hole cards
             for (let round = 0; round < 2; round++) {
@@ -194,12 +205,17 @@ export class PokerController {
 
             // Reaction based on action
             const botPlayer = this.game.players[cp];
+            const betIncrease = botPlayer.bet - betBefore;
             if (botPlayer.folded && this.characters[charIdx]) {
                 await this.anim.characterReact(this.characters[charIdx], 'fold');
             } else if (botPlayer.allIn && this.characters[charIdx]) {
                 await this.anim.characterReact(this.characters[charIdx], 'surprise');
             } else if (callAmountBefore === 0 && botPlayer.bet === betBefore && this.characters[charIdx]) {
                 await this.anim.characterReact(this.characters[charIdx], 'check');
+            } else if (betIncrease > callAmountBefore && this.characters[charIdx]) {
+                await this.anim.characterReact(this.characters[charIdx], 'raise');
+            } else if (betIncrease > 0 && this.characters[charIdx]) {
+                await this.anim.characterReact(this.characters[charIdx], 'call');
             }
 
             if (result.finished) {
@@ -358,6 +374,11 @@ export class PokerController {
 
     /* ---- Community cards ---- */
     async _dealCommunityCards(cards) {
+        if (this.liteMode) {
+            this._updatePhaseLabel();
+            return;
+        }
+
         const startIdx = this.communityCards3D.length;
         for (let i = 0; i < cards.length; i++) {
             const card = cards[i];
@@ -526,6 +547,8 @@ export class PokerController {
     }
 
     _updateNamePlates() {
+        if (this.liteMode) return;
+
         // Remove old plates
         this.namePlates.forEach(p => {
             if (p.parent) p.parent.remove(p);

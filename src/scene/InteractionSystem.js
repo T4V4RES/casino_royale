@@ -55,7 +55,10 @@ export class InteractionSystem {
         let closestDist = Infinity;
 
         for (const zone of this.zones) {
-            const dist = playerPosition.distanceTo(zone.position);
+            const dist = Math.hypot(
+                playerPosition.x - zone.position.x,
+                playerPosition.z - zone.position.z
+            );
             if (dist < zone.radius && dist < closestDist) {
                 closestDist = dist;
                 closestZone = zone;
@@ -77,7 +80,8 @@ export class InteractionSystem {
     /* ---- Show / hide prompt ---- */
     _showPrompt(label) {
         if (!this._promptEl) return;
-        this._promptEl.textContent = `Pressiona E para ${label}`;
+        const isTouch = window.matchMedia?.('(pointer: coarse)')?.matches || navigator.maxTouchPoints > 0;
+        this._promptEl.textContent = isTouch ? `Toca em Interagir para ${label}` : `Pressiona E para ${label}`;
         this._promptEl.style.display = 'block';
     }
 
@@ -90,8 +94,14 @@ export class InteractionSystem {
     _handleKey(e) {
         if (e.code === 'KeyE' && this.activeZone) {
             e.preventDefault();
-            if (this.onInteract) this.onInteract(this.activeZone.name);
+            this.interactActiveZone();
         }
+    }
+
+    interactActiveZone() {
+        if (!this.activeZone) return false;
+        if (this.onInteract) this.onInteract(this.activeZone.name);
+        return true;
     }
 
     /* ---- Visibility control ---- */

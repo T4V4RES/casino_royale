@@ -250,6 +250,25 @@ function _getSkinTone(name) {
     return 0xFFCC99;
 }
 
+/* Re-parent every head/face mesh (everything above the neck, y >= faceMinY)
+   into a single pivot Group placed at the neck base. Rotating the bald head
+   sphere on its own is invisible — a sphere looks identical when rotated, and
+   the face/hair are separate sibling meshes that would be left behind — so the
+   head reactions (nod/shake/think/...) and the idle head-sway never read on
+   screen. After this, _findPart('head') returns the pivot and rotating it
+   moves the whole head (skull + hair + face) together about the neck. */
+function _attachHeadPivot(group, pivotY, faceMinY = 1.46) {
+    const headGroup = new THREE.Group();
+    headGroup.position.set(0, pivotY, -0.01);
+    group.add(headGroup);
+    group.updateMatrixWorld(true);
+    group.children
+        .filter(child => child !== headGroup && child.position.y >= faceMinY)
+        .forEach(child => headGroup.attach(child));
+    headGroup.userData.part = 'head';
+    return headGroup;
+}
+
 function _createCleanCharacter(name, color = 0x3949AB, seatPosition = [0, 0, 0], lookAt = [0, 0, 0]) {
     const group = new THREE.Group();
     const n = name.toLowerCase();
@@ -314,7 +333,7 @@ function _createCleanCharacter(name, color = 0x3949AB, seatPosition = [0, 0, 0],
     const neck = capsuleBetween([0, 1.33, -0.005], [0, 1.45, -0.005], 0.056, skinMat, 12);
     neck.userData.part = 'neck';
     const head = addSphere([0, 1.60, -0.018], 0.185, skinMat, [0.88, 1.03, 0.86]);
-    head.userData.part = 'head';
+    head.userData.part = 'skull';
     const hair = new THREE.Mesh(new THREE.SphereGeometry(0.192, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.46), hairMat);
     hair.position.set(0, 1.675, -0.03);
     hair.scale.set(0.96, 0.68, 0.94);
@@ -408,6 +427,8 @@ function _createCleanCharacter(name, color = 0x3949AB, seatPosition = [0, 0, 0],
         shoe.userData.part = `${side}Shoe`;
         shoe.userData.side = side;
     });
+
+    _attachHeadPivot(group, 1.45);
 
     group.userData.characterName = name;
     group.scale.setScalar(1.08);

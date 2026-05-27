@@ -9,10 +9,11 @@ import { AnimationManager } from '../scene/AnimationManager.js';
    Receives table position from CasinoWorld – no room/lighting creation
    ================================================================== */
 export class BlackjackController {
-    constructor(scene, camera, tablePos) {
+    constructor(scene, camera, tablePos, options = {}) {
         this.scene = scene;
         this.camera = camera;
         this.tablePos = tablePos || new THREE.Vector3(0, 0, 0);
+        this.liteMode = !!options.liteMode;
         this.game = new BlackjackGame();
         this.anim = new AnimationManager();
         this.cards3D = [];
@@ -31,6 +32,11 @@ export class BlackjackController {
     init() {
         const ox = this.tablePos.x;
         const oz = this.tablePos.z;
+
+        if (this.liteMode) {
+            this._updateBetUI();
+            return;
+        }
 
         // Dealer character (across from player)
         this.dealer = createCharacter('Dealer', 0x1A1A1A, [ox, 0.02, oz - 4.55], [ox, 0, oz]);
@@ -111,6 +117,7 @@ export class BlackjackController {
     }
 
     _updateNamePlate() {
+        if (!this.playerPlate) return;
         this.scene.remove(this.playerPlate);
         this.playerPlate = createNamePlate('Jogador', this.playerChips, this.tablePos.x + 2.5, 1.15, this.tablePos.z + 2.5);
         this.scene.add(this.playerPlate);
@@ -155,6 +162,10 @@ export class BlackjackController {
     }
 
     async _dealOneCard(card, pos, faceUp, delay) {
+        if (this.liteMode) {
+            if (delay > 0) await this.anim.wait(Math.min(delay, 80));
+            return;
+        }
         const mesh = createCardMesh(card, false);
         this.scene.add(mesh);
         this.cards3D.push(mesh);

@@ -10,10 +10,11 @@ const WHEEL_ORDER = [
 const SLOT_ANGLE_OFFSET = -Math.PI / 2;
 
 export class RouletteController {
-    constructor(scene, camera, tablePos) {
+    constructor(scene, camera, tablePos, options = {}) {
         this.scene = scene;
         this.camera = camera;
         this.tablePos = tablePos || new THREE.Vector3(0, 0, 0);
+        this.liteMode = !!options.liteMode;
 
         this.game = new RouletteGame();
         this.anim = new AnimationManager();
@@ -41,6 +42,11 @@ export class RouletteController {
     init() {
         const ox = this.tablePos.x;
         const oz = this.tablePos.z;
+
+        if (this.liteMode) {
+            this._updateUI();
+            return;
+        }
 
         // Croupier
         this.croupier = createCharacter('Dealer', 0x1A1A1A, [ox, 0.02, oz - 4.1], [ox, 0, oz]);
@@ -266,8 +272,8 @@ export class RouletteController {
             const pocketIndex = WHEEL_ORDER.indexOf(result.winningNumber);
             pocketAngle = SLOT_ANGLE_OFFSET + ((pocketIndex >= 0 ? pocketIndex : 0) / WHEEL_ORDER.length) * Math.PI * 2;
 
-            this.ball.position.set(1.18, 1.13, 0);
-            if (this.ballGlow) {
+            if (this.ball) this.ball.position.set(1.18, 1.13, 0);
+            if (this.ball && this.ballGlow) {
                 this.ballGlow.position.copy(this.ball.position);
                 this.ballGlow.material.opacity = 0.22;
             }
@@ -368,7 +374,6 @@ export class RouletteController {
                 const t = Math.min((now - this._spinData.startTs) / this._spinData.duration, 1);
                 const gainEnd = 0.24;
                 const releaseEnd = 0.48;
-                const houseEnd = 0.90;
                 const settleEnd = 0.985;
                 const wheelEase = 1 - Math.pow(1 - t, 2.4);
 
@@ -404,28 +409,17 @@ export class RouletteController {
                     ballAngle = angleA + (angleB - angleA) * (1 - Math.pow(1 - u, 1.45));
                     radius = rOuter + (rInner - rOuter) * e;
                     y = yOuter + (yInner - yOuter) * e;
-                } else if (t < houseEnd) {
-                    // The ball runs over the numbered houses and steadily loses energy.
-                    const u = (t - releaseEnd) / (houseEnd - releaseEnd);
-                    const e = 1 - Math.pow(1 - u, 2.65);
+                } else if (t < settleEnd) {
+                    // Ball decelerates across the numbered houses straight into the pocket.
+                    const u = (t - releaseEnd) / (settleEnd - releaseEnd);
+                    const e = 1 - Math.pow(1 - u, 2.8);
                     const angleA = this._spinData.startBall + (this._spinData.finalBall - this._spinData.startBall) * 0.50;
-                    const angleB = this._spinData.finalBall - Math.PI * 1.15;
+                    const angleB = this._spinData.finalBall;
                     const decay = 1 - u;
                     const houseRattle = Math.sin(u * Math.PI * 34 + this._spinData.rattlePhase) * 0.035 * decay;
                     ballAngle = angleA + (angleB - angleA) * e + houseRattle;
-                    radius = rInner + (rPocket + 0.025 - rInner) * e + Math.sin(u * Math.PI * 18) * 0.008 * decay;
-                    y = yInner + (yPocket + 0.012 - yInner) * e + Math.abs(Math.sin(u * Math.PI * 20)) * 0.018 * decay;
-                } else if (t < settleEnd) {
-                    // Last low-energy crawl across the separators before the ball drops.
-                    const u = (t - houseEnd) / (settleEnd - houseEnd);
-                    const e = 1 - Math.pow(1 - u, 3.2);
-                    const angleA = this._spinData.finalBall - Math.PI * 1.15;
-                    const angleB = this._spinData.finalBall;
-                    const decay = Math.exp(-3.5 * u);
-                    const lowHop = Math.sin(u * Math.PI * 9 + this._spinData.rattlePhase) * 0.026 * decay;
-                    ballAngle = angleA + (angleB - angleA) * e + lowHop;
-                    radius = rPocket + 0.025 + (rPocket - (rPocket + 0.025)) * e + Math.sin(u * Math.PI * 5) * 0.004 * decay;
-                    y = yPocket + 0.012 + (yPocket - (yPocket + 0.012)) * e + Math.abs(Math.sin(u * Math.PI * 7)) * 0.008 * decay;
+                    radius = rInner + (rPocket - rInner) * e + Math.sin(u * Math.PI * 18) * 0.008 * decay;
+                    y = yInner + (yPocket - yInner) * e + Math.abs(Math.sin(u * Math.PI * 20)) * 0.018 * decay;
                 } else {
                     // Small final vibration inside the selected house.
                     const u = (t - settleEnd) / (1 - settleEnd);

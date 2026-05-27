@@ -2,9 +2,8 @@ import { Deck } from '../cards/Deck.js';
 import { evaluateHand } from './PokerHand.js';
 
 /**
- * Texas Hold'em Poker game logic
- * Player vs 3 AI bots
- * Phases: preflop, flop, turn, river, showdown
+ * Poker game logic
+ * Player vs 3 AI bots, multiple betting rounds with community cards.
  */
 
 const BOT_NAMES = ['Bot Alice', 'Bot Bruno', 'Bot Clara'];

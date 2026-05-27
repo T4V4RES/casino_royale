@@ -84,6 +84,24 @@ fps.bounds = { minX: -13.2, maxX: 13.2, minZ: -13.2, maxZ: 13.2 };
 // --- Touch Controls (Mobile) ---
 const touch = new TouchControls(renderer.domElement);
 
+const mobileButtonPressAt = new WeakMap();
+function bindPress(el, handler) {
+    if (!el) return;
+    const run = (e) => {
+        if (el.disabled) return;
+        const now = performance.now();
+        const lastPress = mobileButtonPressAt.get(el);
+        if (lastPress !== undefined && now - lastPress < 300) return;
+        mobileButtonPressAt.set(el, now);
+        handler(e);
+    };
+    el.addEventListener('click', run);
+    el.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        run(e);
+    }, { passive: false });
+}
+
 // --- Build casino world ---
 const { colliders, interactionZones } = buildCasinoWorld(scene, quality);
 if (quality.lowPower) {
@@ -116,6 +134,7 @@ let playerChips = 1000;
 let drinksCount = 0;
 let soberAccumulator = 0;
 let isBlackout = false;
+const mobileLiteMode = quality.isMobileLike;
 
 // --- Clock ---
 const clock = new THREE.Clock();
@@ -161,7 +180,7 @@ function enterCasino() {
 }
 
 if (splashEl) {
-    splashEl.addEventListener('click', enterCasino);
+    bindPress(splashEl, enterCasino);
 }
 
 // Click anywhere on canvas → lock pointer
@@ -173,7 +192,7 @@ renderer.domElement.addEventListener('click', () => {
 
 // Lock-hint overlay itself is clickable — redirect to canvas lock
 if (lockHintEl) {
-    lockHintEl.addEventListener('click', () => {
+    bindPress(lockHintEl, () => {
         if (state === 'exploring' && !fps.locked) {
             _hideLockHint();
             fps.lock();
@@ -209,43 +228,90 @@ interaction.onInteract = (zoneName) => {
     else if (zoneName === 'roulette') enterRoulette();
     else if (zoneName === 'bar') enterBar();
     else if (zoneName === 'atm') enterATM();
-    else if (zoneName.startsWith('slot-')) playSlotMachine();
+    else if (zoneName.startsWith('slot-')) playSlotMachine(zoneName);
 };
 
 // Touch interact button
 touch.onInteract = () => {
     if (state !== 'exploring') return;
-    // Trigger interaction if at a zone
-    const nearZones = interactionZones.filter(z => {
-        const dist = camera.position.distanceTo(new THREE.Vector3(z.position.x, z.position.y, z.position.z));
-        return dist < z.radius;
-    });
-    if (nearZones.length > 0) {
-        interaction.onInteract(nearZones[0].name);
-    }
+    interaction.update(camera.position);
+    interaction.interactActiveZone();
 };
 
-function playSlotMachine() {
+const SLOT_SYMBOL_COLORS = [0xD32F2F, 0x2E7D32, 0xFBC02D];
+const SLOT_SYMBOL_EMISSIVES = [0x330000, 0x003300, 0x332200];
+
+async function playSlotMachine(zoneName) {
     const bet = 10;
     if (playerChips < bet) {
         showToast('Sem fichas suficientes para jogar slots');
         return;
     }
+
+    const zone = interactionZones.find(z => z.name === zoneName);
+    const slotReels = zone?.slotReels;
+    if (slotReels?.some(r => r.spinning)) return;
+
     playerChips -= bet;
-    const reels = [
-        Math.floor(Math.random() * 6),
-        Math.floor(Math.random() * 6),
-        Math.floor(Math.random() * 6),
+    _updateFPSChipsDisplay();
+
+    const finalIdxs = [
+        Math.floor(Math.random() * SLOT_SYMBOL_COLORS.length),
+        Math.floor(Math.random() * SLOT_SYMBOL_COLORS.length),
+        Math.floor(Math.random() * SLOT_SYMBOL_COLORS.length),
     ];
-    let prize = 0;
-    if (reels[0] === reels[1] && reels[1] === reels[2]) {
-        prize = reels[0] === 0 ? 250 : 100;
-    } else if (reels[0] === reels[1] || reels[1] === reels[2] || reels[0] === reels[2]) {
-        prize = 20;
+
+    if (slotReels) {
+        const durations = [1100, 1450, 1750];
+        await Promise.all(slotReels.map((sr, i) =>
+            _animateSlotReel(sr, finalIdxs[i], durations[i])
+        ));
     }
+
+    const allMatch = finalIdxs[0] === finalIdxs[1] && finalIdxs[1] === finalIdxs[2];
+    const prize = allMatch ? (finalIdxs[0] === 2 ? 250 : 100) : 0;
     playerChips += prize;
     _updateFPSChipsDisplay();
-    showToast(prize > 0 ? `Slots: ganhaste $${prize}` : 'Slots: perdeste $10');
+    showToast(prize > 0 ? `Slots: ganhaste $${prize}!` : `Slots: perdeste $${bet}`);
+}
+
+function _animateSlotReel(slotReel, finalIdx, duration) {
+    return new Promise(resolve => {
+        slotReel.spinning = true;
+        const group = slotReel.group;
+        const mat = slotReel.symbol.material;
+        const t0 = performance.now();
+        let lastColorChange = 0;
+        let cycleIdx = 0;
+
+        const step = () => {
+            const now = performance.now();
+            const t = Math.min((now - t0) / duration, 1);
+            const ease = AnimationManager.easeOutCubic(t);
+
+            // Vertical spin (≈8 full rotations, decelerating)
+            group.rotation.x = Math.PI * 16 * ease;
+
+            // Cycle symbol color while clearly spinning
+            if (t < 0.88 && now - lastColorChange > 70) {
+                cycleIdx = (cycleIdx + 1) % SLOT_SYMBOL_COLORS.length;
+                mat.color.setHex(SLOT_SYMBOL_COLORS[cycleIdx]);
+                mat.emissive.setHex(SLOT_SYMBOL_EMISSIVES[cycleIdx]);
+                lastColorChange = now;
+            }
+
+            if (t < 1) {
+                requestAnimationFrame(step);
+            } else {
+                group.rotation.x = 0;
+                mat.color.setHex(SLOT_SYMBOL_COLORS[finalIdx]);
+                mat.emissive.setHex(SLOT_SYMBOL_EMISSIVES[finalIdx]);
+                slotReel.spinning = false;
+                resolve();
+            }
+        };
+        requestAnimationFrame(step);
+    });
 }
 
 function showToast(message) {
@@ -262,7 +328,14 @@ function showToast(message) {
 
 // Touch menu button
 touch.onMenuToggle = () => {
-    if (touch.isTouchDevice) return;
+    if (touch.isTouchDevice) {
+        if (state === 'blackjack') exitBlackjack();
+        else if (state === 'poker') exitPoker();
+        else if (state === 'roulette') exitRoulette();
+        else if (state === 'atm') atm.close();
+        else if (state === 'bar') bar.close();
+        return;
+    }
     if (state === 'exploring' && lockHintEl) {
         if (fps.locked) {
             _showLockHint();
@@ -278,6 +351,7 @@ touch.onMenuToggle = () => {
    Enter / Exit Blackjack
    ================================================================== */
 function enterBlackjack() {
+    if (state !== 'exploring') return;
     state = 'blackjack';
     savedCamPos = camera.position.clone();
     savedCamQuat = camera.quaternion.clone();
@@ -296,13 +370,22 @@ function enterBlackjack() {
     const lookTarget = new THREE.Vector3(zone.position.x, 0.9, zone.position.z);
 
     // Smooth camera walk to seat
-    transitionAnim.smoothCameraMove(camera, seatPos, lookTarget, quality.lowPower ? 260 : 700).then(() => {
+    transitionAnim.smoothCameraMove(camera, seatPos, lookTarget, mobileLiteMode ? 120 : 700).then(() => {
         document.getElementById('bj-hud').style.display = 'block';
 
-        bjCtrl = new BlackjackController(scene, camera, zone.position);
-        bjCtrl.playerChips = playerChips;
-        bjCtrl.init();
-        bjCtrl._updateBetUI();
+        try {
+            bjCtrl = new BlackjackController(scene, camera, zone.position, { liteMode: mobileLiteMode });
+            bjCtrl.playerChips = playerChips;
+            bjCtrl.init();
+            bjCtrl._updateBetUI();
+        } catch (err) {
+            console.error('Blackjack enter error:', err);
+            showToast('Erro ao abrir Blackjack');
+            exitBlackjack();
+        }
+    }).catch(err => {
+        console.error('Blackjack camera error:', err);
+        exitBlackjack();
     });
 }
 
@@ -321,6 +404,7 @@ function exitBlackjack() {
    Enter / Exit Poker
    ================================================================== */
 function enterPoker() {
+    if (state !== 'exploring') return;
     state = 'poker';
     savedCamPos = camera.position.clone();
     savedCamQuat = camera.quaternion.clone();
@@ -338,13 +422,25 @@ function enterPoker() {
     const seatPos = new THREE.Vector3(zone.position.x, 5.4, zone.position.z + 2.2);
     const lookTarget = new THREE.Vector3(zone.position.x, 0.9, zone.position.z);
 
-    transitionAnim.smoothCameraMove(camera, seatPos, lookTarget, quality.lowPower ? 260 : 700).then(() => {
+    transitionAnim.smoothCameraMove(camera, seatPos, lookTarget, mobileLiteMode ? 120 : 700).then(() => {
         document.getElementById('pk-hud').style.display = 'block';
 
-        pkCtrl = new PokerController(scene, camera, zone.position);
-        pkCtrl.playerChips = playerChips;
-        pkCtrl.init();
-        pkCtrl.startRound();
+        try {
+            pkCtrl = new PokerController(scene, camera, zone.position, { liteMode: mobileLiteMode });
+            pkCtrl.playerChips = playerChips;
+            pkCtrl.init();
+            pkCtrl.startRound().catch(err => {
+                console.error('Poker start error:', err);
+                showToast('Erro ao iniciar Poker');
+            });
+        } catch (err) {
+            console.error('Poker enter error:', err);
+            showToast('Erro ao abrir Poker');
+            exitPoker();
+        }
+    }).catch(err => {
+        console.error('Poker camera error:', err);
+        exitPoker();
     });
 }
 
@@ -363,6 +459,7 @@ function exitPoker() {
    Enter / Exit Roulette
    ================================================================== */
 function enterRoulette() {
+    if (state !== 'exploring') return;
     state = 'roulette';
     savedCamPos = camera.position.clone();
     savedCamQuat = camera.quaternion.clone();
@@ -380,12 +477,21 @@ function enterRoulette() {
     const seatPos = new THREE.Vector3(zone.position.x, 5.2, zone.position.z + 2.1);
     const lookTarget = new THREE.Vector3(zone.position.x, 0.95, zone.position.z);
 
-    transitionAnim.smoothCameraMove(camera, seatPos, lookTarget, quality.lowPower ? 260 : 700).then(() => {
+    transitionAnim.smoothCameraMove(camera, seatPos, lookTarget, mobileLiteMode ? 120 : 700).then(() => {
         document.getElementById('rt-hud').style.display = 'block';
 
-        rtCtrl = new RouletteController(scene, camera, zone.position);
-        rtCtrl.playerChips = playerChips;
-        rtCtrl.init();
+        try {
+            rtCtrl = new RouletteController(scene, camera, zone.position, { liteMode: mobileLiteMode });
+            rtCtrl.playerChips = playerChips;
+            rtCtrl.init();
+        } catch (err) {
+            console.error('Roulette enter error:', err);
+            showToast('Erro ao abrir Roleta');
+            exitRoulette();
+        }
+    }).catch(err => {
+        console.error('Roulette camera error:', err);
+        exitRoulette();
     });
 }
 
@@ -595,7 +701,7 @@ function _updateFPSChipsDisplay() {
    Back-to-menu (exit game) buttons
    ================================================================== */
 document.querySelectorAll('.btn-back-menu').forEach(btn => {
-    btn.addEventListener('click', () => {
+    bindPress(btn, () => {
         if (state === 'blackjack') exitBlackjack();
         else if (state === 'poker') exitPoker();
         else if (state === 'roulette') exitRoulette();
@@ -618,7 +724,7 @@ if (rouletteGridEl) {
             const redNums = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
             btn.classList.add(redNums.has(num) ? 'rt-num-red' : 'rt-num-black');
         }
-        btn.addEventListener('click', () => {
+        bindPress(btn, () => {
             if (!rtCtrl) return;
             const amount = parseInt(document.getElementById('rt-bet-amount')?.value || '50');
             rtCtrl.placeBet(amount, 'number', num);
@@ -628,40 +734,40 @@ if (rouletteGridEl) {
 }
 
 document.querySelectorAll('.rt-color-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    bindPress(btn, () => {
         if (!rtCtrl) return;
         const amount = parseInt(document.getElementById('rt-bet-amount')?.value || '50');
         rtCtrl.placeBet(amount, 'color', btn.dataset.color);
     });
 });
 
-document.getElementById('rt-clear-bet')?.addEventListener('click', () => rtCtrl?.clearBet());
-document.getElementById('rt-spin')?.addEventListener('click', () => rtCtrl?.spin());
+bindPress(document.getElementById('rt-clear-bet'), () => rtCtrl?.clearBet());
+bindPress(document.getElementById('rt-spin'), () => rtCtrl?.spin());
 
 /* ==================================================================
    Blackjack button bindings
    ================================================================== */
 document.querySelectorAll('.chip-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    bindPress(btn, () => {
         if (bjCtrl) bjCtrl.placeBet(parseInt(btn.dataset.value));
     });
 });
-document.getElementById('bj-clear-bet')?.addEventListener('click', () => bjCtrl?.clearBet());
-document.getElementById('bj-deal')?.addEventListener('click', () => bjCtrl?.deal());
-document.getElementById('bj-hit')?.addEventListener('click', () => bjCtrl?.hit());
-document.getElementById('bj-stand')?.addEventListener('click', () => bjCtrl?.stand());
-document.getElementById('bj-double')?.addEventListener('click', () => bjCtrl?.doubleDown());
-document.getElementById('bj-new-round-btn')?.addEventListener('click', () => bjCtrl?.newRound());
+bindPress(document.getElementById('bj-clear-bet'), () => bjCtrl?.clearBet());
+bindPress(document.getElementById('bj-deal'), () => bjCtrl?.deal());
+bindPress(document.getElementById('bj-hit'), () => bjCtrl?.hit());
+bindPress(document.getElementById('bj-stand'), () => bjCtrl?.stand());
+bindPress(document.getElementById('bj-double'), () => bjCtrl?.doubleDown());
+bindPress(document.getElementById('bj-new-round-btn'), () => bjCtrl?.newRound());
 
 /* ==================================================================
    Poker button bindings
    ================================================================== */
-document.getElementById('pk-fold')?.addEventListener('click', () => pkCtrl?.playerFold());
-document.getElementById('pk-check')?.addEventListener('click', () => pkCtrl?.playerCheck());
-document.getElementById('pk-call')?.addEventListener('click', () => pkCtrl?.playerCall());
-document.getElementById('pk-raise')?.addEventListener('click', () => pkCtrl?.playerRaise());
-document.getElementById('pk-allin')?.addEventListener('click', () => pkCtrl?.playerAllIn());
-document.getElementById('pk-start-round-btn')?.addEventListener('click', () => pkCtrl?.startRound());
+bindPress(document.getElementById('pk-fold'), () => pkCtrl?.playerFold());
+bindPress(document.getElementById('pk-check'), () => pkCtrl?.playerCheck());
+bindPress(document.getElementById('pk-call'), () => pkCtrl?.playerCall());
+bindPress(document.getElementById('pk-raise'), () => pkCtrl?.playerRaise());
+bindPress(document.getElementById('pk-allin'), () => pkCtrl?.playerAllIn());
+bindPress(document.getElementById('pk-start-round-btn'), () => pkCtrl?.startRound());
 
 /* ==================================================================
    ESC to exit current game

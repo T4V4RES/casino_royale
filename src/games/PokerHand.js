@@ -1,7 +1,7 @@
 import { Deck } from '../cards/Deck.js';
 
 /**
- * Texas Hold'em Poker hands ranking
+ * Poker hands ranking
  */
 const HAND_RANKS = {
     HIGH_CARD: 0,
