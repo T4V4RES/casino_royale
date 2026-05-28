@@ -3,7 +3,7 @@
 A first-person 3D casino built with Three.js. The player walks around an interior casino room, approaches interactive zones, and plays Blackjack, Poker, European Roulette and slot machines, withdraws chips at the ATM, and drinks at the bar.
 
 Available online at [t4v4res.github.io/casino_royale](https://t4v4res.github.io/casino_royale/).
-
+**Na pasta doc alem do pptx esta tambem um relatorio em pdf mais tecnico com mais detalhe sobre como a parte do jogo e das regras do jogo funcionam em si**
 ---
 
 ## Core Game Mechanics
