@@ -1,0 +1,5 @@
+Titulo do Projeto: Casino Royale 3D
+Nome do Autor: Guilherme Tavares 119867
+URL do repositorio do projeto no GitHub: https://github.com/T4V4RES/casino_royale
+URL para executar o projeto: https://t4v4res.github.io/casino_royale/
+URL do video: https://github.com/T4V4RES/casino_royale/blob/main/demo_casino.mp4
